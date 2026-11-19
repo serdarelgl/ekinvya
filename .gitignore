@@ -1,0 +1,18 @@
+# Local development and Vercel output
+node_modules/
+.vercel/
+dist/
+coverage/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Operating system files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Original all-in-one local backup; deploy the modular index.html instead
+/ekinvya_v4_Tarla_Sezon_Islem_Karlilik.html

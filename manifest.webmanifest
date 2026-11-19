@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "Ekinvya | Akıllı Tarım Asistanı",
+  "short_name": "Ekinvya",
+  "description": "Parsellerini, tarımsal hesaplarını ve hava raporlarını takip et.",
+  "lang": "tr-TR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5f7f4",
+  "theme_color": "#173f32",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#173f32">
+<meta name="description" content="Ekinvya; parseller, tarımsal hesaplar ve konum tabanlı hava raporları için akıllı tarım asistanı.">
+<meta name="application-name" content="Ekinvya">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Ekinvya | Akıllı Tarım Asistanı</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><div class="brandmark">✳</div><div><strong>Ekinvya</strong><small>AKILLI TARIM ASİSTANI</small></div></div>
+  <div><div class="navlabel">Menü</div><nav class="nav" id="nav">
+    <button class="active" data-view="dashboard"><span class="ico">⌂</span> Ana Sayfa</button>
+    <button data-view="fields"><span class="ico">▧</span> Parsellerim</button>
+    <button data-view="weather"><span class="ico">☼</span> Hava Durumu</button>
+    <button data-view="ai"><span class="ico">✦</span> AI Asistan</button>
+    <button data-view="profile"><span class="ico">◉</span> Profil</button>
+  </nav></div>
+  <div class="sidebottom"><strong>☁ Bulut bağlantısı</strong>Bu prototip şu anda cihazında çalışır. Çoklu cihaz senkronizasyonu için bulut kurulumu sonraki aşamada bağlanacak.</div>
+</aside>
+<main class="main">
+  <div class="topbar"><div class="crumb">Ekinvya <span style="padding:0 7px;color:#a9b6ac">/</span> <strong id="crumbTitle">Genel Bakış</strong></div><div class="topright"><div class="status"><span class="dot"></span><span>Yerel kayıt modu</span></div><div class="avatar">E</div></div></div>
+  <section class="view active" id="view-dashboard">
+    <div class="heading"><div><div class="eyebrow">2026 / 2027 ÜRETİM SEZONU</div><h1>Tarımın kontrolü sende.</h1><p>Hesapla, takip et, maliyetini bil. Her şey tek menüde.</p></div><button class="primary" onclick="showView('npk')">＋ Yeni NPK hesabı</button></div>
+    <div class="stats">
+      <div class="stat"><div class="stat-top">Kayıtlı parsel sayısı <span class="stat-icon">▧</span></div><strong id="statFields">0</strong><small>Henüz parsel eklenmedi</small></div>
+      <div class="stat"><div class="stat-top">NPK hesapları <span class="stat-icon">◉</span></div><strong id="statCalcs">0</strong><small>Bu cihazda kayıtlı hesap</small></div>
+      <div class="stat"><div class="stat-top">Toplam alan <span class="stat-icon">⌁</span></div><strong id="statArea">0 <small>da</small></strong><small>Parsel kayıtlarına göre</small></div>
+      <div class="stat"><div class="stat-top">Bu yıl maliyet <span class="stat-icon">₺</span></div><strong id="statCost">—</strong><small>Tüm tarlalar toplamı</small></div>
+    </div>
+        <section class="panel weather-home-panel"><div class="panelhead"><div><div class="eyebrow">YAKININDAKİ HAVA</div><h2>Konumundaki hava durumu</h2><p id="weatherStatusHome" aria-live="polite">Anlık hava ve 5 günlük tahmini görmek için konumunu paylaş.</p></div><button class="secondary weather-locate" type="button">⌖ Konumumu bul</button></div><div id="homeWeatherData" aria-live="polite"><div class="home-weather-current"><div class="home-weather-temp"><span class="home-weather-icon" aria-hidden="true">☼</span><div><strong>—°</strong><span class="home-weather-condition">Konum bekleniyor</span></div></div><div class="home-weather-grid"><div class="home-weather-metric"><span>Hissedilen</span><strong>—</strong></div><div class="home-weather-metric"><span>Nem</span><strong>—</strong></div><div class="home-weather-metric"><span>Rüzgâr</span><strong>—</strong></div><div class="home-weather-metric"><span>Yağış</span><strong>—</strong></div></div></div><div class="home-weather-days" aria-label="5 günlük hava tahmini"><div class="home-weather-day"><strong>Bugün</strong><span>—</span></div><div class="home-weather-day"><strong>Yarın</strong><span>—</span></div><div class="home-weather-day"><strong>Gün 3</strong><span>—</span></div><div class="home-weather-day"><strong>Gün 4</strong><span>—</span></div><div class="home-weather-day"><strong>Gün 5</strong><span>—</span></div></div></div><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px"><small class="weather-attribution">Tahmin kaynağı: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" style="color:#dcebdc">Open-Meteo</a> · CC BY 4.0</small><button class="secondary" type="button" data-view="weather">Detaylı hava durumu →</button></div></section><section class="panel">
+      <div class="panelhead"><div><h2>Tarlalarım</h2><p>Parsel ekranından eklediğin tarlalar burada otomatik listelenir.</p></div><button class="primary" onclick="showView('fields')">＋ Tarla ekle</button></div>
+      <div id="dashboardFields" class="quicklist"><div class="quickitem"><div class="quickicon">▧</div><div><strong>Henüz tarla eklenmedi</strong><small>“Tarla ekle” ile ilk parselini kaydet.</small></div></div></div>
+    </section>
+    <div class="contentgrid">
+      <div class="leftcol">
+        <section class="panel">
+          <div class="panelhead"><div><h2>Son hesaplamalar</h2><p>Bu tarayıcıda kaydettiğin NPK hesapları.</p></div><button class="secondary" onclick="showView('reports')">Tüm kayıtlar →</button></div>
+          <div id="recentCalcs" class="quicklist"><div class="quickitem"><div class="quickicon">◉</div><div><strong>Henüz kayıt yok</strong><small>İlk hesabını yapıp kaydedebilirsin.</small></div></div></div>
+        </section>
+      </div>
+      <div class="rightcol">
+        <section class="panel"><div class="panelhead"><div><h2>Modüllerin</h2><p>Tarım işlerini tek noktadan yönet.</p></div></div>
+          <div class="modulegrid">
+            <button class="module" onclick="showView('fields')" style="text-align:left"><div class="micon">🌾</div><strong>Parseller</strong><small>Arazi ve ürün bilgileri</small><span class="soon" style="background:#e7f4eb;color:#1d6848">HAZIR</span></button>
+            <button class="module" onclick="showView('season')" style="text-align:left"><div class="micon">🌱</div><strong>Sezon takibi</strong><small>Sezon geçmişi, işlem defteri ve kârlılık</small><span class="soon" style="background:#e7f4eb;color:#1d6848">HAZIR</span></button>
+            <button class="module" onclick="showView('reports')" style="text-align:left"><div class="micon">🧮</div><strong>Kayıtlı hesaplar</strong><small>NPK kayıtları ve CSV</small><span class="soon" style="background:#e7f4eb;color:#1d6848">HAZIR</span></button>
+            <button class="module" onclick="showView('costs')" style="text-align:left"><div class="micon">💰</div><strong>Maliyet</strong><small>Gübre fiyatı ve TL/da</small><span class="soon" style="background:#e7f4eb;color:#1d6848">HAZIR</span></button>
+          </div>
+        </section>
+        <section class="panel"><div class="panelhead"><div><h2>Sonraki adımlar</h2><p>Ürünü sağlam temellerle büyütelim.</p></div></div>
+          <div class="quicklist">
+            <div class="quickitem"><div class="quickicon">✓</div><div><strong>Responsive arayüz</strong><small>Telefon ve masaüstü düzeni</small></div><span class="arrow">✓</span></div>
+            <div class="quickitem"><div class="quickicon">✓</div><div><strong>Canlı NPK hesabı</strong><small>Etiket oranı ve alan bazlı hesap</small></div><span class="arrow">✓</span></div>
+            <div class="quickitem"><div class="quickicon">☁</div><div><strong>Bulut senkronizasyonu</strong><small>Kimlik doğrulama ve veritabanı gerekli</small></div><span class="arrow">→</span></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </section>
+  <section class="view" id="view-npk"><div class="heading"><div><div class="eyebrow">HESAPLAMA MERKEZİ</div><h1>NPK Hesap Makinesi</h1><p>Gübreleri ekle, miktarları gir ve saf besin sonuçlarını hesapla.</p></div></div>        <section class="panel">
+          <div class="panelhead"><div><h2>Hızlı NPK hesaplama</h2><p>Gübre miktarını gir, saf besin değerlerini anında gör.</p></div><span class="tag">CANLI HESAP</span></div>
+          <div class="formgrid">
+            <div class="field"><label for="plant">Bitki / ürün</label><input id="plant" placeholder="Örn. Buğday" value="Buğday"></div>
+            <div class="field"><label for="area">Toplam arazi (da)</label><input id="area" type="text" inputmode="decimal" min="0.01" step="any" value="100"></div>
+          </div>
+          <div id="fertlist" class="fertlist"></div>
+          <button class="addrow" id="addFert">＋ Gübre ekle</button>
+          <div class="resultband">
+            <div class="resulttitle"><strong>Dekara saf besin</strong><span id="resultArea">100 da için hesaplanıyor</span></div>
+            <div class="nutrients">
+              <div class="nutrient"><div class="nlabel">AZOT</div><strong id="outN">0</strong><small>kg N / da</small></div>
+              <div class="nutrient"><div class="nlabel">FOSFOR</div><strong id="outP">0</strong><small>kg P₂O₅ / da</small></div>
+              <div class="nutrient"><div class="nlabel">POTASYUM</div><strong id="outK">0</strong><small>kg K₂O / da</small></div>
+            </div>
+            <div class="resultfoot"><span>Toplam araziye gereken gübre: <b id="totalFert">0 kg</b></span><span id="elemental">P ve K elementel dönüşümü hazır</span></div>
+          </div>
+          <div class="tablewrap"><table><thead><tr><th>Gübre</th><th>kg/da</th><th>N</th><th>P₂O₅</th><th>K₂O</th></tr></thead><tbody id="resultRows"></tbody></table></div>
+          <div class="notice">Hesaplama, girilen gübre etiket değerlerine dayanır. NPK sonucu bir uygulama reçetesi değildir. Doz kararını toprak analizi, bitki gelişimi ve bölgesel önerilerle birlikte değerlendir.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="primary" id="saveCalc">Hesabı kaydet</button><button class="secondary" id="exportCsv">CSV dışa aktar</button><button class="secondary" onclick="window.print()">Yazdır / PDF</button><button class="secondary" onclick="showView('costs')">Maliyet & fiyatlar</button><button class="secondary" onclick="showView('reports')">Kayıtlı hesaplar</button></div>
+        </section>
+</section>
+  <section class="view" id="view-fields">
+    <div class="heading"><div><div class="eyebrow">ARAZİ YÖNETİMİ</div><h1>Tarlalarım</h1><p>Eklediğin tarlalar burada ve genel bakışta görüntülenir.</p></div></div>
+    <section class="panel">
+      <div class="panelhead"><div><h2>Yeni tarla ekle</h2><p>Parsel bilgilerini kaydet; genel bakıştaki liste ve toplam alan otomatik güncellensin.</p></div><span class="tag">YEREL KAYIT</span></div>
+      <form id="fieldForm">
+        <div class="formgrid">
+          <div class="field"><label for="fieldName">Tarla / parsel adı *</label><input id="fieldName" required maxlength="80" placeholder="Örn. Kırkgöz kuzey parseli"></div>
+          <div class="field"><label for="fieldArea">Alan (dekar) *</label><input id="fieldArea" required type="text" inputmode="decimal" min="0.01" step="any" placeholder="Örn. 25"></div>
+          <div class="field"><label for="fieldAda">Ada</label><input id="fieldAda" maxlength="20" placeholder="Örn. 112"></div><div class="field"><label for="fieldParsel">Parsel</label><input id="fieldParsel" maxlength="20" placeholder="Örn. 15"></div><div class="field"><label for="fieldCrop">Ekilmiş / planlanan ürün</label><select id="fieldCrop"><option value="">Seçiniz</option><option>Buğday</option><option>Arpa</option><option>Kanola</option><option>Ayçiçeği</option><option>Mısır</option><option>Diğer</option></select></div>
+          <div class="field"><label for="fieldLocation">Konum / mahalle</label><input id="fieldLocation" maxlength="120" placeholder="Örn. Tekirdağ, Karaevli"></div>
+          <div class="field"><label for="fieldSeason">Üretim sezonu</label><select id="fieldSeason"><option>2026/2027</option><option>2027</option><option>2025/2026</option></select></div>
+          <div class="field"><label for="fieldNotes">Not</label><input id="fieldNotes" maxlength="250" placeholder="Toprak, kira, gözlem vb."></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><button class="primary" type="submit">＋ Tarlayı kaydet</button><button class="secondary" type="reset">Formu temizle</button></div>
+      </form>
+    </section>
+    <section class="panel"><div class="panelhead"><div><h2>Kayıtlı tarlalar</h2><p>Silme işlemi genel bakıştaki liste ve alan toplamını da günceller.</p></div><span class="tag" id="fieldCountTag">0 TARLA</span></div><div id="fieldsList" class="quicklist"></div></section>
+  </section>
+  <section class="view" id="view-season">
+    <div class="workflow-strip" aria-label="Tarla yönetimi akışı">
+      <button type="button" onclick="showView('dashboard')"><span>01</span> Ana Sayfa</button>
+      <span>›</span><button type="button" onclick="showView('fields')"><span>02</span> Tarla Detayı</button>
+      <span>›</span><button type="button" onclick="showView('season')"><span>03</span> Sezon Geçmişi</button>
+      <span>›</span><button type="button" onclick="focusDiary()"><span>04</span> İşlem Defteri</button>
+      <span>›</span><button type="button" onclick="focusProfit()"><span>05</span> Maliyet ve Kârlılık</button>
+    </div>
+    <div id="seasonList">
+      <div class="heading"><div><div class="eyebrow">ÜRETİM GÜNLÜĞÜ</div><h1>Tarla giderleri</h1><p>Bir tarla seç. Giderini ekle. Dekar maliyetini anında gör.</p></div><button class="primary" data-view="fields" onclick="showView(this.dataset.view)">＋ Tarla ekle</button></div>
+      <section class="panel">
+        <div class="panelhead"><div><h2>Yeni tarla ekle</h2><p>Kayıttan sonra doğrudan maliyet girişine geçersin.</p></div><span class="tag">YEREL KAYIT</span></div>
+        <form id="seasonFieldForm"><div class="formgrid">
+          <div class="field"><label for="sfName">Tarla adı *</label><input id="sfName" maxlength="80" placeholder="Örn. Yol üstü tarla"></div>
+          <div class="field"><label for="sfArea">Dekar *</label><input id="sfArea" inputmode="decimal" placeholder="Örn. 25"></div>
+          <div class="field"><label for="sfAda">Ada</label><input id="sfAda" maxlength="20" placeholder="Örn. 112"></div>
+          <div class="field"><label for="sfParsel">Parsel</label><input id="sfParsel" maxlength="20" placeholder="Örn. 15"></div>
+        </div><div style="margin-top:16px"><button class="primary" type="submit">＋ Tarlayı kaydet</button></div></form>
+      </section>
+      <section class="panel"><div class="panelhead"><div><h2>Tarlalarım</h2><p>Gider girmek istediğin tarlayı seç.</p></div></div><div id="seasonFields" class="quicklist"></div></section>
+    </div>
+    <div id="seasonDetail" hidden>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"><button class="secondary" onclick="closeField()">← Tarlalara dön</button><button class="secondary" onclick="window.print()">Yazdır / PDF</button></div>
+      <section class="panel">
+        <div class="panelhead"><div><h2 id="sdTitle"></h2><p id="sdSub"></p></div><span class="tag">TARLA DETAYI</span></div>
+        <div class="resultband" style="margin-top:0"><div class="nutrients">
+          <div class="nutrient"><div class="nlabel">YILLIK MALİYET</div><strong id="sdTotal">0</strong><small>seçili yıl</small></div>
+          <div class="nutrient"><div class="nlabel">DEKARA MALİYET</div><strong id="sdPer">0</strong><small>₺ / da</small></div>
+          <div class="nutrient"><div class="nlabel">KAYIT</div><strong id="sdCount">0</strong><small>maliyet kalemi</small></div>
+        </div></div>
+      </section>
+      <div class="workflow-strip detail-flow" aria-label="Seçili tarla akışı">
+        <button type="button" onclick="showView('dashboard')"><span>01</span> Ana Sayfa</button><span>›</span>
+        <button type="button" onclick="showView('fields')"><span>02</span> Tarla Detayı</button><span>›</span>
+        <button type="button" onclick="focusSeasonHistory()"><span>03</span> Sezon Geçmişi</button><span>›</span>
+        <button type="button" onclick="focusDiary()"><span>04</span> İşlem Defteri</button><span>›</span>
+        <button type="button" onclick="focusProfit()"><span>05</span> Maliyet ve Kârlılık</button>
+      </div>
+      <section class="panel" id="seasonInfoPanel">
+        <div class="panelhead"><div><h2>Sezon bilgileri</h2><p>Seçili tarla için ürün, sezon ve hasat verilerini kaydet.</p></div><span class="tag">TARLA + SEZON</span></div>
+        <form id="seasonInfoForm">
+          <div class="formgrid">
+            <div class="field"><label for="siCrop">Ürün</label><select id="siCrop"><option>Buğday</option><option>Arpa</option><option>Kanola</option><option>Ayçiçeği</option><option>Mısır</option><option>Diğer</option></select></div>
+            <div class="field"><label for="siYear">Üretim sezonu</label><select id="siYear"></select></div>
+            <div class="field"><label for="siYield">Verim (kg/da)</label><input id="siYield" inputmode="decimal" placeholder="Örn. 650"></div>
+            <div class="field"><label for="siPrice">Satış fiyatı (₺/kg)</label><input id="siPrice" inputmode="decimal" placeholder="Örn. 13"></div>
+            <div class="field"><label for="siSupport">Destek / diğer gelir (₺, toplam)</label><input id="siSupport" inputmode="decimal" placeholder="Örn. 15000"></div>
+            <div class="field"><label for="siRevenueOther">Diğer ürün geliri (₺, toplam)</label><input id="siRevenueOther" inputmode="decimal" placeholder="Varsa saman vb."></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="primary" type="submit">Sezon bilgilerini kaydet</button><button class="secondary" type="button" onclick="focusProfit()">Kârlılığı hesapla ↓</button></div>
+          <p class="hint" style="font-size:10px;color:var(--muted)">Gelir tahmini = verim × alan × satış fiyatı + destek ve diğer gelir. Gerçekleşen verileri girmen önerilir.</p>
+        </form>
+      </section>
+      <section class="panel" id="operationPanel">
+        <div class="panelhead"><div><h2>İşlem defteri</h2><p>Ekim, gübreleme, ilaçlama, sulama, hasat ve diğer tarla işlerini tarihçeye ekle.</p></div><span class="tag">UYGULAMA KAYDI</span></div>
+        <form id="operationForm">
+          <div class="formgrid">
+            <div class="field"><label for="opDate">İşlem tarihi</label><input id="opDate" type="date" required></div>
+            <div class="field"><label for="opType">İşlem türü</label><select id="opType"><option>Ekim</option><option>Gübreleme</option><option>İlaçlama</option><option>Sulama</option><option>Toprak işleme</option><option>Biçerdöver / Hasat</option><option>Nakliye</option><option>İşçilik</option><option>Gözlem</option><option>Diğer</option></select></div>
+            <div class="field"><label for="opDesc">Ürün / işlem açıklaması *</label><input id="opDesc" maxlength="160" required placeholder="Örn. 10 kg/da DAP uygulandı"></div>
+            <div class="field"><label for="opAmount">Miktar (isteğe bağlı)</label><input id="opAmount" inputmode="decimal" placeholder="Örn. 10"></div>
+            <div class="field"><label for="opUnit">Miktar birimi</label><select id="opUnit"><option>kg/da</option><option>kg toplam</option><option>L/da</option><option>L toplam</option><option>da</option><option>saat</option><option>adet</option><option>—</option></select></div>
+            <div class="field"><label for="opCost">İşlem maliyeti (₺, toplam)</label><input id="opCost" inputmode="decimal" placeholder="Örn. 12500"></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="primary" type="submit">＋ İşlemi kaydet</button><button class="secondary" type="button" onclick="focusProfit()">Maliyet ve kârlılığa git ↓</button></div>
+        </form>
+        <div class="tablewrap"><table><thead><tr><th>Tarih</th><th>İşlem</th><th style="text-align:left">Açıklama</th><th>Miktar</th><th>Maliyet ₺</th><th></th></tr></thead><tbody id="operationRows"></tbody></table></div>
+      </section>
+      <section class="panel" id="profitPanel">
+        <div class="panelhead"><div><h2>Maliyet ve kârlılık</h2><p>Seçili tarla ve sezon için kayıtlı giderleri, tahmini geliri ve net sonucu bir arada gör.</p></div><span class="tag">SEZON SONUCU</span></div>
+        <div class="stats" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:14px">
+          <div class="stat"><div class="stat-top">Toplam maliyet</div><strong id="profitCost">0 ₺</strong><small>Seçili sezon</small></div>
+          <div class="stat"><div class="stat-top">Tahmini gelir</div><strong id="profitRevenue">0 ₺</strong><small>Ürün + diğer gelirler</small></div>
+          <div class="stat"><div class="stat-top">Net kâr / zarar</div><strong id="profitNet">0 ₺</strong><small id="profitNetLabel">Gelir − maliyet</small></div>
+          <div class="stat"><div class="stat-top">Başabaş fiyatı</div><strong id="profitBreakEven">—</strong><small>₺/kg, destekler düşülerek</small></div>
+        </div>
+        <div class="resultfoot" style="color:var(--muted);border-top:0;padding-top:0"><span id="profitPerDa">Dekara maliyet: —</span><span id="profitYieldNote">Verim ve fiyat girilmediğinde gelir hesaplanmaz.</span></div>
+        <div class="notice">Bu bölüm girilen verilere göre hesap yapar. Destekler, kira, mazot, hasat, nakliye ve diğer giderleri eksiksiz kaydetmezsen sonuç gerçek kârlılığı yansıtmaz.</div>
+      </section>
+      <section class="panel" id="seasonHistoryPanel">
+        <div class="panelhead"><div><h2>Sezon geçmişi</h2><p>Seçili tarlanın farklı yıllardaki giderlerini ve dekara maliyetini karşılaştır.</p></div><span class="tag" id="sdYearTag"></span></div>
+        <div class="tablewrap"><table><thead><tr><th>Yıl</th><th>Toplam ₺</th><th>₺/da</th><th></th></tr></thead><tbody id="sdYears"></tbody></table></div>
+      </section>
+      <section class="panel">
+        <div class="panelhead"><div><h2>Gider ekle</h2><p>Ürün adını ve ödediğin toplam tutarı yaz. Dekar maliyeti kendiliğinden hesaplanır.</p></div><span class="tag">HIZLI KAYIT</span></div>
+        <form id="costForm"><div class="formgrid">
+          <div class="field"><label for="cDate">Tarih</label><input id="cDate" type="date"></div>
+          <div class="field"><label for="cCat">Gider türü</label><select id="cCat"></select></div>
+          <div class="field"><label for="cDesc">Ürün / gider adı</label><input id="cDesc" maxlength="120" placeholder="Örn. DAP, yaprak gübresi, yabancı ot ilacı"></div>
+          <div class="field"><label for="cAmt">Tutar (₺)</label><input id="cAmt" inputmode="decimal" placeholder="Örn. 12500"></div>
+        </div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><button class="primary" type="submit">＋ Gideri kaydet</button><button class="secondary" type="button" id="npkCostBtn">Son NPK hesabının gübre maliyetini ekle</button></div></form>
+      </section>
+      <section class="panel"><div class="panelhead"><div><h2 id="sdLedgerTitle"></h2></div></div><div class="tablewrap"><table><thead><tr><th>Tarih</th><th>Kategori</th><th style="text-align:left">Açıklama</th><th>₺</th><th></th></tr></thead><tbody id="sdRows"></tbody></table></div><div id="sdCats" style="margin-top:14px"></div></section>
+    </div>
+  </section>
+  <section class="view" id="view-soil"><div class="pageplaceholder"><div class="eyebrow">TOPRAK VERİLERİ</div><h2>Toprak Analizleri</h2><p>Analiz tarihi, laboratuvar, pH, organik madde, tuzluluk ve ölçülen besin elementleri için kayıt ekranı hazırlanacak. Öneriler, analiz yöntemi ve uygun yerel referanslarla birlikte ele alınacak.</p></div></section>
+  <section class="view" id="view-costs">
+    <div class="heading"><div><div class="eyebrow">GİRDİ EKONOMİSİ</div><h1>Maliyet & Gübre Fiyatları</h1><p>Fiyatları gir, NPK hesabının maliyetini gör, senaryoları karşılaştır.</p></div></div>
+    <section class="panel">
+      <div class="panelhead"><div><h2>Gübre fiyatları</h2><p>Fiyatı ₺/kg, ₺/çuval (50 kg) ya da ₺/ton olarak girebilirsin.</p></div><span class="tag">YEREL KAYIT</span></div>
+      <div class="tablewrap"><table><thead><tr><th>Gübre</th><th>Fiyat</th><th>Birim</th><th>₺/kg</th></tr></thead><tbody id="priceBody"></tbody></table></div>
+      <div class="notice">Fiyatlar senin girdiğin tahmini değerlerdir; güncel bayi fiyatlarıyla güncelle. “Özel gübre” satırı, listede olmayan tüm özel gübreler için ortak kullanılır.</div>
+    </section>
+    <section class="panel">
+      <div class="panelhead"><div><h2>Mevcut NPK hesabının maliyeti</h2><p>NPK Hesap Makinesi sekmesindeki son hesaba göre.</p></div><span class="tag">CANLI</span></div>
+      <div class="resultband" style="margin-top:0">
+        <div class="nutrients">
+          <div class="nutrient"><div class="nlabel">TOPLAM MALİYET</div><strong id="cTotal">—</strong><small>tüm arazi</small></div>
+          <div class="nutrient"><div class="nlabel">DEKARA MALİYET</div><strong id="cPer">—</strong><small>₺ / da</small></div>
+          <div class="nutrient"><div class="nlabel">SAF BESİN</div><strong id="cNut">—</strong><small>₺ / kg (N+P₂O₅+K₂O)</small></div>
+        </div>
+        <div class="resultfoot"><span id="cInfo"></span></div>
+      </div>
+      <div class="formgrid" style="margin-top:14px;grid-template-columns:1fr auto;align-items:end"><div class="field"><label for="scenName">Senaryo adı</label><input id="scenName" maxlength="60" placeholder="Örn. DAP + Üre"></div><button class="primary" id="saveScen">Senaryo olarak kaydet</button></div>
+    </section>
+    <section class="panel">
+      <div class="panelhead"><div><h2>Senaryo karşılaştırma</h2><p>Farklı gübre karışımlarını yan yana koy. Maliyetler güncel fiyatlarla hesaplanır.</p></div></div>
+      <div class="tablewrap"><table><thead><tr><th>Senaryo</th><th>N/P₂O₅/K₂O</th><th>Gübre kg/da</th><th>₺/da</th><th>Toplam ₺</th><th>₺/kg besin</th><th>Fark ₺/da</th><th></th></tr></thead><tbody id="scenBody"></tbody></table></div>
+    </section>
+  </section>
+  <section class="view" id="view-weather">
+    <div class="heading"><div><div class="eyebrow">WINDY · KONUM BAZLI DETAY</div><h1>Hava Durumu</h1><p id="weatherStatusPage" aria-live="polite">Windy haritasını konumunda açmak için GPS izni ver.</p></div><button class="primary weather-locate" type="button">⌖ Anlık konumumu göster</button></div>
+    <section class="panel weather-page-panel"><div class="panelhead"><div><h2>Windy detaylı tahmin haritası</h2><p>Katman menüsünden rüzgâr, sıcaklık, yağış, bulut, radar ve diğer harita görünümlerini seç; zaman çizelgesinden tahmin saatini değiştir, haritaya dokunarak nokta tahminini incele.</p></div><span class="tag">WINDY KATMANLARI AÇIK</span></div><div class="weather-frame weather-frame-page"><iframe id="weatherMapPage" title="Windy detaylı hava durumu tahmin haritası" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe><div class="weather-empty" id="weatherEmptyPage"><span>☼</span><b>Harita konum bekliyor</b><small>Konum bilgisini yalnızca bu düğmeye bastığında alırız.</small></div></div><p class="weather-privacy">Haritada Windy’nin gömülü arayüzünde sunulan katmanlar, basınç, zaman çizelgesi ve nokta detayları açıktır. Konum koordinatları haritayı odaklamak için Windy’ye gönderilir.</p><div class="weather-toolbar"><span id="weatherCoords">Konum bekleniyor</span><a id="openWindyFull" href="https://www.windy.com/" target="_blank" rel="noopener noreferrer">Windy’de tam ekran aç ↗</a></div></section>
+    <section class="panel weather-report-panel"><div class="panelhead"><div><div class="eyebrow">KONUM RAPORU · OPEN-METEO</div><h2>Anlık koşullar ve tahmin</h2><p id="weatherReportStatus" aria-live="polite">Detaylı yerel rapor için önce konumunu paylaş.</p></div><span class="tag">SAATLİK + 7 GÜN</span></div><div id="weatherReport" class="weather-report-empty">Konum izni verildiğinde basınç, çiy noktası, bulutluluk, görüş, rüzgâr hamleleri, UV ve yağış dahil ayrıntılar burada görünür.</div><small class="weather-attribution">Sayısal hava raporu Open-Meteo tahmin servisinden alınır · <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></small></section>
+  </section>
+  <section class="view" id="view-ai"><div class="pageplaceholder"><div class="eyebrow">EKİNVYA ASİSTAN</div><h1>AI Asistan</h1><p>Tarla ve sezon verilerine göre yardımcı olacak asistan alanı. Bağlantı ve yanıt üretimi bu taslakta henüz etkin değil.</p><div class="panel"><div class="panelhead"><div><h2>Nasıl yardımcı olabilirim?</h2><p>Örnek: “Bu hafta parsellerimde hangi işleri kontrol etmeliyim?”</p></div></div><div class="field"><label for="aiPrompt">Mesajın</label><textarea id="aiPrompt" rows="3" placeholder="Sorunu yaz…" disabled style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;resize:vertical"></textarea></div><button class="primary" type="button" disabled style="margin-top:12px;opacity:.55">Asistana sor · Yakında</button></div></div></section>
+  <section class="view" id="view-profile"><div class="pageplaceholder"><div class="eyebrow">HESAP</div><h1>Profil</h1><p>Hesap ve uygulama tercihleri bu alanda yönetilecek.</p><div class="placeholdercards"><div class="module"><div class="micon">◉</div><strong>Profil bilgileri</strong><small>Ad, iletişim bilgileri ve hesap tercihleri.</small><span class="soon">YAKINDA</span></div><div class="module"><div class="micon">▤</div><strong>Veri ve kayıtlar</strong><small>Parsel, sezon ve uygulama verilerinin yönetimi.</small><span class="soon">YAKINDA</span></div></div></div></section>  <section class="view" id="view-farmers"><div class="pageplaceholder"><div class="eyebrow">MÜŞTERİ İLİŞKİLERİ</div><h2>Çiftçi CRM</h2><p>Çiftçi iletişim bilgileri, görüşme notları, ürün ilgisi, teklif geçmişi ve parsel bağlantıları için güvenli, yetkili erişime sahip bir kayıt sistemi planlanıyor.</p></div></section>
+  <section class="view" id="view-reports"><div class="pageplaceholder"><div class="eyebrow">ANALİZ VE ÇIKTILAR</div><h2>Raporlar & Kayıtlar</h2><p>Kaydettiğin hesapları görüntüleyebilir, CSV dosyası olarak dışa aktarabilir ve yazdırma ekranından PDF oluşturabilirsin.</p><div id="allCalcs" class="quicklist" style="margin-top:22px"></div></div></section>
+</main>
+</div>
+<nav class="mobilebar" id="mobilebar">
+  <button class="active" data-view="dashboard"><span>⌂</span>Ana Sayfa</button>
+  <button data-view="fields"><span>▧</span>Parsellerim</button>
+  <button data-view="weather"><span>☼</span>Hava Durumu</button>
+  <button data-view="ai"><span>✦</span>AI Asistan</button>
+  <button data-view="profile"><span>◉</span>Profil</button>
+</nav>
+<div class="toast" id="toast"></div>
+<script src="./app.js" defer></script>
+</body>
+</html>
+
+
+
+
+

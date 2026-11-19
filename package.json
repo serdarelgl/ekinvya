@@ -1,0 +1,14 @@
+{
+  "name": "ekinvya",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ekinvya akıllı tarım asistanı - statik web uygulaması",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "check": "node scripts/check-project.mjs"
+  }
+}
