@@ -7,6 +7,7 @@ Ekinvya; parsel kayıtları, tarımsal hesaplar ve konuma dayalı hava tahminler
 - `index.html` — uygulamanın ana sayfası
 - `styles.css` — masaüstü ve mobil arayüz stilleri
 - `app.js` — arayüz, yerel kayıtlar, GPS, Open-Meteo ve Windy bağlantıları
+- `auth.js` ve `supabase-config.js` — e-posta üyeliği, giriş, doğrulama, şifre sıfırlama ve oturum yönetimi
 - `manifest.webmanifest` ve `service-worker.js` — HTTPS üzerinde ana ekrana ekleme ve uygulama kabuğunu çevrimdışı açma desteği
 - `favicon.svg` — Ekinvya uygulama simgesi
 - `vercel.json` — güvenlik ve konum izni yanıt başlıkları
@@ -29,6 +30,18 @@ npm run check
 ```
 
 Bu komut temel proje dosyalarını, HTML kimliklerini, uygulama dosyası bağlantılarını ve JavaScript sözdizimini kontrol eder.
+
+## Üyelik sistemini bağlama
+
+Kayıt/giriş ekranı Supabase Auth ile hazırlanmıştır. Gerçek hesap açılıp giriş yapılabilmesi için:
+
+1. Supabase'de bir proje oluştur ve **Authentication → Sign In / Providers** bölümünde e-posta/şifre girişini etkinleştir.
+2. **Project URL** ve **publishable key** değerlerini `supabase-config.js` içindeki boş alanlara ekle. Publishable key istemci uygulamasında kullanılmak üzere tasarlanmıştır; **secret** veya `service_role` anahtarını bu dosyaya hiçbir zaman koyma.
+3. **Authentication → URL Configuration** altında Site URL olarak `https://ekinvya.vercel.app` ve Redirect URLs listesine `https://ekinvya.vercel.app/**` ile `http://localhost:4173/**` ekle.
+4. Üyelikte e-posta doğrulama açıksa, doğrulama ve şifre yenileme e-postaları gerekir. Supabase'in varsayılan SMTP servisi yalnızca proje ekibinde önceden yetkili e-posta adreslerine gönderir ve üretim için tasarlanmamıştır; gerçek kullanıcı kayıtları için özel SMTP ayarla.
+5. `npm run check` çalıştır, sonra değişiklikleri GitHub'a gönder. Vercel deposu bağlıysa yeni dağıtım otomatik başlar.
+
+Hesaplar Supabase Auth tarafından saklanır. Bu özellik mevcut parsel/hesap kayıtlarını kullanıcı hesabına taşımaz veya cihazlar arasında eşitlemez; bu veriler şu an tarayıcının yerel deposunda kalır. Hesap bazlı senkronizasyon için ayrıca tablolar, Row Level Security (RLS) politikaları ve veri taşıma adımı gerekir.
 
 ## GitHub'a yükleme
 

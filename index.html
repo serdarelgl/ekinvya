@@ -232,7 +232,28 @@
     <section class="panel weather-report-panel"><div class="panelhead"><div><div class="eyebrow">KONUM RAPORU · OPEN-METEO</div><h2>Anlık koşullar ve tahmin</h2><p id="weatherReportStatus" aria-live="polite">Detaylı yerel rapor için önce konumunu paylaş.</p></div><span class="tag">SAATLİK + 7 GÜN</span></div><div id="weatherReport" class="weather-report-empty">Konum izni verildiğinde basınç, çiy noktası, bulutluluk, görüş, rüzgâr hamleleri, UV ve yağış dahil ayrıntılar burada görünür.</div><small class="weather-attribution">Sayısal hava raporu Open-Meteo tahmin servisinden alınır · <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></small></section>
   </section>
   <section class="view" id="view-ai"><div class="pageplaceholder"><div class="eyebrow">EKİNVYA ASİSTAN</div><h1>AI Asistan</h1><p>Tarla ve sezon verilerine göre yardımcı olacak asistan alanı. Bağlantı ve yanıt üretimi bu taslakta henüz etkin değil.</p><div class="panel"><div class="panelhead"><div><h2>Nasıl yardımcı olabilirim?</h2><p>Örnek: “Bu hafta parsellerimde hangi işleri kontrol etmeliyim?”</p></div></div><div class="field"><label for="aiPrompt">Mesajın</label><textarea id="aiPrompt" rows="3" placeholder="Sorunu yaz…" disabled style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;resize:vertical"></textarea></div><button class="primary" type="button" disabled style="margin-top:12px;opacity:.55">Asistana sor · Yakında</button></div></div></section>
-  <section class="view" id="view-profile"><div class="pageplaceholder"><div class="eyebrow">HESAP</div><h1>Profil</h1><p>Hesap ve uygulama tercihleri bu alanda yönetilecek.</p><div class="placeholdercards"><div class="module"><div class="micon">◉</div><strong>Profil bilgileri</strong><small>Ad, iletişim bilgileri ve hesap tercihleri.</small><span class="soon">YAKINDA</span></div><div class="module"><div class="micon">▤</div><strong>Veri ve kayıtlar</strong><small>Parsel, sezon ve uygulama verilerinin yönetimi.</small><span class="soon">YAKINDA</span></div></div></div></section>  <section class="view" id="view-farmers"><div class="pageplaceholder"><div class="eyebrow">MÜŞTERİ İLİŞKİLERİ</div><h2>Çiftçi CRM</h2><p>Çiftçi iletişim bilgileri, görüşme notları, ürün ilgisi, teklif geçmişi ve parsel bağlantıları için güvenli, yetkili erişime sahip bir kayıt sistemi planlanıyor.</p></div></section>
+  <section class="view" id="view-profile">
+    <div class="heading"><div><div class="eyebrow">EKİNVYA HESABI</div><h1>Profil ve üyelik</h1><p>Hesabını oluştur veya kayıtlı hesabınla giriş yap.</p></div></div>
+    <div id="authConfigNotice" class="auth-notice" role="status" aria-live="polite" hidden></div>
+    <div id="authGuestPanel" class="auth-layout">
+      <aside class="auth-intro"><span class="auth-mark" aria-hidden="true">✳</span><div class="eyebrow">TARLALARIN SENİNLE</div><h2>Ekinvya hesabını oluştur</h2><p>Üyelik açarak uygulamaya güvenli şekilde giriş yapabilirsin. Parsel ve hesap kayıtları şimdilik bu cihazda tutulmaya devam eder.</p><ul><li>✦ E-posta ve parola ile güvenli giriş</li><li>✦ E-posta doğrulama akışı</li><li>✦ Şifre yenileme ve oturumu kapatma</li></ul></aside>
+      <div class="panel auth-card">
+        <div class="auth-tabs" id="authTabs" role="group" aria-label="Hesap işlemi"><button type="button" class="active" id="authLoginTab" aria-pressed="true" data-auth-mode="login">Giriş yap</button><button type="button" id="authSignupTab" aria-pressed="false" data-auth-mode="signup">Üye ol</button></div>
+        <form id="authForm" novalidate>
+          <div class="field auth-field" id="authNameField" hidden><label for="authName">Ad soyad</label><input id="authName" name="name" type="text" autocomplete="name" maxlength="80" placeholder="Adın ve soyadın"></div>
+          <div class="field auth-field"><label for="authEmail">E-posta adresi</label><input id="authEmail" name="email" type="email" autocomplete="email" inputmode="email" maxlength="254" placeholder="ornek@eposta.com" required></div>
+          <div class="field auth-field"><label for="authPassword">Şifre</label><input id="authPassword" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" placeholder="En az 8 karakter" required></div>
+          <div class="field auth-field" id="authConfirmField" hidden><label for="authPasswordConfirm">Şifre tekrarı</label><input id="authPasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="Şifreni yeniden yaz"></div>
+          <button class="auth-forgot" type="button" id="authForgotButton">Şifremi unuttum</button>
+          <button class="primary auth-submit" id="authSubmit" type="submit">Giriş yap</button>
+          <p class="auth-feedback" id="authFeedback" role="status" aria-live="polite"></p>
+        </form>
+        <form id="authRecoveryForm" hidden novalidate><h3>Yeni şifre belirle</h3><p>E-posta bağlantısıyla hesabını doğruladıktan sonra yeni şifreni gir.</p><div class="field"><label for="authNewPassword">Yeni şifre</label><input id="authNewPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></div><div class="field"><label for="authNewPasswordConfirm">Yeni şifre tekrarı</label><input id="authNewPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></div><button class="primary auth-submit" type="submit">Şifreyi güncelle</button><p class="auth-feedback" id="authRecoveryFeedback" role="status" aria-live="polite"></p></form>
+        <p class="auth-security-note">Şifren Ekinvya tarafından okunmaz veya yerel uygulama dosyasında saklanmaz. Kimlik doğrulama Supabase Auth üzerinden yürütülür.</p>
+      </div>
+    </div>
+    <section id="authAccountPanel" class="panel auth-account" hidden><div class="auth-account-icon" aria-hidden="true">✓</div><div><div class="eyebrow">OTURUM AÇIK</div><h2 id="authAccountName">Ekinvya hesabın</h2><p id="authAccountEmail"></p><p class="auth-security-note">Hesabın hazır. Parsel ve maliyet kayıtlarının hesaplar arasında eşitlenmesi ayrıca kurulacak.</p></div><button class="secondary" type="button" id="authSignOutButton">Güvenli çıkış</button><p id="authAccountFeedback" class="auth-feedback" role="status" aria-live="polite"></p></section>
+  </section>  <section class="view" id="view-farmers"><div class="pageplaceholder"><div class="eyebrow">MÜŞTERİ İLİŞKİLERİ</div><h2>Çiftçi CRM</h2><p>Çiftçi iletişim bilgileri, görüşme notları, ürün ilgisi, teklif geçmişi ve parsel bağlantıları için güvenli, yetkili erişime sahip bir kayıt sistemi planlanıyor.</p></div></section>
   <section class="view" id="view-reports"><div class="pageplaceholder"><div class="eyebrow">ANALİZ VE ÇIKTILAR</div><h2>Raporlar & Kayıtlar</h2><p>Kaydettiğin hesapları görüntüleyebilir, CSV dosyası olarak dışa aktarabilir ve yazdırma ekranından PDF oluşturabilirsin.</p><div id="allCalcs" class="quicklist" style="margin-top:22px"></div></div></section>
 </main>
 </div>
@@ -244,7 +265,10 @@
   <button data-view="profile"><span>◉</span>Profil</button>
 </nav>
 <div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.min.js" defer crossorigin="anonymous"></script>
+<script src="./supabase-config.js" defer></script>
 <script src="./app.js" defer></script>
+<script src="./auth.js" defer></script>
 </body>
 </html>
 
