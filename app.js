@@ -61,6 +61,7 @@ function exportCsv(){
  const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="ekinvya-npk-raporu.csv";a.click();URL.revokeObjectURL(url);toast("CSV raporu indirildi.");
 }
 function showView(view){
+ if((document.body.classList.contains("auth-pending")||document.body.classList.contains("auth-locked"))&&view!=="profile")return;
  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));
  document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
  const labels={dashboard:"Ana Sayfa",weather:"Hava Durumu",ai:"AI Asistan",profile:"Profil",npk:"NPK Hesap Makinesi",fields:"Parsellerim",season:"Sezon Takibi",soil:"Toprak Analizleri",costs:"Maliyet & Gübre Fiyatları",farmers:"Çiftçi CRM",reports:"Raporlar"};

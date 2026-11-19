@@ -18,6 +18,19 @@
   const authTabs = $("authTabs");
   let mode = "login";
 
+  function lockApp() {
+    document.body.classList.remove("auth-pending");
+    document.body.classList.add("auth-locked");
+    window.showView?.("profile");
+  }
+
+  function unlockApp() {
+    const wasLocked = document.body.classList.contains("auth-pending")
+      || document.body.classList.contains("auth-locked");
+    document.body.classList.remove("auth-pending", "auth-locked");
+    if (wasLocked) window.showView?.("dashboard");
+  }
+
   function setFeedback(message, state = "") {
     const target = $("authFeedback");
     target.textContent = message;
@@ -74,6 +87,7 @@
   }
 
   function showAccount(user) {
+    unlockApp();
     const name = user.user_metadata?.full_name || user.user_metadata?.name || "Ekinvya üyesi";
     $("authAccountName").textContent = name;
     $("authAccountEmail").textContent = user.email || "";
@@ -83,6 +97,7 @@
   }
 
   function showGuest() {
+    lockApp();
     guestPanel.hidden = false;
     accountPanel.hidden = true;
     showConfigurationState();
@@ -95,7 +110,7 @@
     authTabs.hidden = true;
     recoveryForm.hidden = false;
     notice.hidden = true;
-    window.showView?.("profile");
+    lockApp();
     $("authNewPassword").focus();
   }
 
