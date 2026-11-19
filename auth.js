@@ -31,6 +31,17 @@
     if (wasLocked) window.showView?.("dashboard");
   }
 
+  let sessionCheckResolved = false;
+  let sessionCheckTimeout = null;
+
+  function finishSessionCheck() {
+    sessionCheckResolved = true;
+    if (sessionCheckTimeout !== null) {
+      window.clearTimeout(sessionCheckTimeout);
+      sessionCheckTimeout = null;
+    }
+  }
+
   function setFeedback(message, state = "") {
     const target = $("authFeedback");
     target.textContent = message;
@@ -234,19 +245,31 @@
     showGuest();
   } else {
     notice.hidden = true;
+    sessionCheckTimeout = window.setTimeout(() => {
+      if (sessionCheckResolved) return;
+      finishSessionCheck();
+      showGuest();
+      setFeedback("Oturum kontrolü yanıt vermedi. Giriş yapmayı deneyebilir veya sayfayı yenileyebilirsin.", "error");
+    }, 8000);
     client.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
+        finishSessionCheck();
         showRecovery();
       } else if (session?.user) {
+        finishSessionCheck();
         showAccount(session.user);
-      } else if (event === "SIGNED_OUT") {
+      } else if (event === "SIGNED_OUT" || event === "INITIAL_SESSION") {
+        finishSessionCheck();
         showGuest();
       }
     });
     client.auth.getSession().then(({ data, error }) => {
+      finishSessionCheck();
       if (error) throw error;
       if (data.session?.user) showAccount(data.session.user);
+      else showGuest();
     }).catch(error => {
+      finishSessionCheck();
       showGuest();
       console.warn("Ekinvya oturumu okunamadı:", error);
     });
