@@ -13,7 +13,8 @@
 <title>Ekinvya | Akıllı Tarım Asistanı</title>
 <link rel="stylesheet" href="./styles.css">
 </head>
-<body>
+<body class="auth-pending">
+<div class="auth-loading" id="authLoading" role="status" aria-live="polite"><div><span class="auth-loading-mark" aria-hidden="true">✳</span><strong>Ekinvya</strong><p>Oturumun güvenle kontrol ediliyor…</p></div></div>
 <div class="app">
 <aside class="sidebar">
   <div class="brand"><div class="brandmark">✳</div><div><strong>Ekinvya</strong><small>AKILLI TARIM ASİSTANI</small></div></div>
@@ -233,10 +234,10 @@
   </section>
   <section class="view" id="view-ai"><div class="pageplaceholder"><div class="eyebrow">EKİNVYA ASİSTAN</div><h1>AI Asistan</h1><p>Tarla ve sezon verilerine göre yardımcı olacak asistan alanı. Bağlantı ve yanıt üretimi bu taslakta henüz etkin değil.</p><div class="panel"><div class="panelhead"><div><h2>Nasıl yardımcı olabilirim?</h2><p>Örnek: “Bu hafta parsellerimde hangi işleri kontrol etmeliyim?”</p></div></div><div class="field"><label for="aiPrompt">Mesajın</label><textarea id="aiPrompt" rows="3" placeholder="Sorunu yaz…" disabled style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;resize:vertical"></textarea></div><button class="primary" type="button" disabled style="margin-top:12px;opacity:.55">Asistana sor · Yakında</button></div></div></section>
   <section class="view" id="view-profile">
-    <div class="heading"><div><div class="eyebrow">EKİNVYA HESABI</div><h1>Profil ve üyelik</h1><p>Hesabını oluştur veya kayıtlı hesabınla giriş yap.</p></div></div>
+    <div class="heading"><div><div class="eyebrow">EKİNVYA HESABI</div><h1>Ekinvya’ya giriş yap</h1><p>Devam etmek için hesabına giriş yap. Henüz hesabın yoksa ücretsiz üyelik oluştur.</p></div></div>
     <div id="authConfigNotice" class="auth-notice" role="status" aria-live="polite" hidden></div>
     <div id="authGuestPanel" class="auth-layout">
-      <aside class="auth-intro"><span class="auth-mark" aria-hidden="true">✳</span><div class="eyebrow">TARLALARIN SENİNLE</div><h2>Ekinvya hesabını oluştur</h2><p>Üyelik açarak uygulamaya güvenli şekilde giriş yapabilirsin. Parsel ve hesap kayıtları şimdilik bu cihazda tutulmaya devam eder.</p><ul><li>✦ E-posta ve parola ile güvenli giriş</li><li>✦ E-posta doğrulama akışı</li><li>✦ Şifre yenileme ve oturumu kapatma</li></ul></aside>
+      <aside class="auth-intro"><span class="auth-mark" aria-hidden="true">✳</span><div class="eyebrow">TARLALARIN SENİNLE</div><h2>Tarlalarını Ekinvya’da takip et</h2><p>Hesabınla giriş yap veya yeni bir üyelik oluşturarak Ekinvya’yı kullanmaya başla. Parsel ve hesap kayıtları şimdilik bu cihazda tutulmaya devam eder.</p><ul><li>✦ E-posta ve parola ile güvenli giriş</li><li>✦ E-posta doğrulama akışı</li><li>✦ Şifre yenileme ve oturumu kapatma</li></ul></aside>
       <div class="panel auth-card">
         <div class="auth-tabs" id="authTabs" role="group" aria-label="Hesap işlemi"><button type="button" class="active" id="authLoginTab" aria-pressed="true" data-auth-mode="login">Giriş yap</button><button type="button" id="authSignupTab" aria-pressed="false" data-auth-mode="signup">Üye ol</button></div>
         <form id="authForm" novalidate>
