@@ -44,9 +44,9 @@ function calc(){
  const d={plant:$("plant").value.trim()||"Belirtilmedi",area,rows,N,P,K,total,createdAt:new Date().toISOString()};updCostStat(d);return d;
 }
 function getSaves(){try{return JSON.parse(localStorage.getItem("tarla360_npk_saves")||"[]")}catch(e){return []}}
-function setSaves(a){try{localStorage.setItem("tarla360_npk_saves",JSON.stringify(a));return true}catch(e){toast("Tarayıcı kaydı başarısız. Depolama alanını kontrol et.");return false}}
+function setSaves(a){try{localStorage.setItem("tarla360_npk_saves",JSON.stringify(a));window.ekinvyaCloud?.queueSave();return true}catch(e){toast("Tarayıcı kaydı başarısız. Depolama alanını kontrol et.");return false}}
 function toast(msg){$("toast").textContent=msg;$("toast").classList.add("show");clearTimeout(toast.timer);toast.timer=setTimeout(()=>$("toast").classList.remove("show"),2800)}
-function saveCalc(){const d=calc();if(!(d.area>0)){toast("Lütfen geçerli bir arazi alanı gir.");return}const saves=getSaves();saves.unshift({...d,id:Date.now()});if(setSaves(saves)){renderSaves();toast("NPK hesabı bu cihazda kaydedildi.");}}
+function saveCalc(){const d=calc();if(!(d.area>0)){toast("Lütfen geçerli bir arazi alanı gir.");return}const saves=getSaves();saves.unshift({...d,id:Date.now()});if(setSaves(saves)){renderSaves();toast("NPK hesabı kaydedildi.");}}
 function renderSaves(){
  const a=getSaves();$("statCalcs").textContent=a.length;
  const recent=a.slice(0,4);
@@ -94,7 +94,7 @@ $("saveCalc").addEventListener("click",saveCalc);$("exportCsv").addEventListener
 
 const FIELD_KEY="tarla360_fields_v1";
 function getFields(){try{return JSON.parse(localStorage.getItem(FIELD_KEY)||"[]")}catch(e){return []}}
-function setFields(a){try{localStorage.setItem(FIELD_KEY,JSON.stringify(a));return true}catch(e){toast("Tarla kaydı yapılamadı. Tarayıcı depolamasını kontrol et.");return false}}
+function setFields(a){try{localStorage.setItem(FIELD_KEY,JSON.stringify(a));window.ekinvyaCloud?.queueSave();return true}catch(e){toast("Tarla kaydı yapılamadı. Tarayıcı depolamasını kontrol et.");return false}}
 function renderFields(){
  const fields=getFields();
  $("statFields").textContent=fields.length;
@@ -116,9 +116,9 @@ function useFieldForNpk(id){const f=getFields().find(x=>x.id===id);if(!f)return;
 
 const PRICE_KEY="tarla360_prices_v1",SCEN_KEY="tarla360_scen_v1";
 function getPrices(){try{return JSON.parse(localStorage.getItem(PRICE_KEY)||"{}")}catch(e){return{}}}
-function setPrices(o){try{localStorage.setItem(PRICE_KEY,JSON.stringify(o));return true}catch(e){toast("Fiyat kaydedilemedi.");return false}}
+function setPrices(o){try{localStorage.setItem(PRICE_KEY,JSON.stringify(o));window.ekinvyaCloud?.queueSave();return true}catch(e){toast("Fiyat kaydedilemedi.");return false}}
 function getScen(){try{return JSON.parse(localStorage.getItem(SCEN_KEY)||"[]")}catch(e){return[]}}
-function setScen(a){try{localStorage.setItem(SCEN_KEY,JSON.stringify(a));return true}catch(e){toast("Senaryo kaydedilemedi.");return false}}
+function setScen(a){try{localStorage.setItem(SCEN_KEY,JSON.stringify(a));window.ekinvyaCloud?.queueSave();return true}catch(e){toast("Senaryo kaydedilemedi.");return false}}
 function unitKg(p){if(!p||!(p.v>0))return null;return p.u==="ton"?p.v/1000:p.u==="bag"?p.v/50:p.v}
 function costOf(d){const pr=getPrices();let tot=0;const miss=[];d.rows.forEach(r=>{if(!(r.q>0))return;const k=unitKg(pr[r.name]);if(k==null){if(!miss.includes(r.name))miss.push(r.name)}else tot+=k*r.q});const ok=!miss.length&&d.area>0,per=ok?tot/d.area:null,nut=d.N+d.P+d.K;return{tot:ok?tot:null,per,perNut:ok&&nut>0?per/nut:null,miss}}
 function updCostStat(d){}
@@ -136,7 +136,7 @@ $("priceBody").addEventListener("input",e=>{const tr=e.target.closest("tr");if(!
 $("saveScen").addEventListener("click",()=>{const d=calc();if(!(d.area>0)||!d.rows.length){toast("Önce NPK hesabını yap.");return}const a=getScen();a.push({id:Date.now(),name:$("scenName").value.trim()||`Senaryo ${a.length+1}`,plant:d.plant,area:d.area,rows:d.rows,N:d.N,P:d.P,K:d.K,total:d.total});if(setScen(a)){$("scenName").value="";renderCostResults();toast("Senaryo kaydedildi.")}});
 const COST_KEY="tarla360_costs_v1",CATS=["Taban gübresi","Üst gübre","Yaprak gübresi","İlaç (genel)","Herbisit","Fungisit","İnsektisit","Tohum","Mazot / Yakıt","İşçilik","Sulama","Kira","Makine / Hizmet","Nakliye","Diğer"];
 function getCosts(){try{return JSON.parse(localStorage.getItem(COST_KEY)||"[]")}catch(e){return[]}}
-function setCosts(a){try{localStorage.setItem(COST_KEY,JSON.stringify(a));return true}catch(e){toast("Maliyet kaydedilemedi. Tarayıcı depolamasını kontrol et.");return false}}
+function setCosts(a){try{localStorage.setItem(COST_KEY,JSON.stringify(a));window.ekinvyaCloud?.queueSave();return true}catch(e){toast("Maliyet kaydedilemedi. Tarayıcı depolamasını kontrol et.");return false}}
 let curField=null,selYear=new Date().getFullYear();
 const yearOf=d=>parseInt(String(d).slice(0,4))||0;
 const money=v=>`${fmt(v)} ₺`;
@@ -178,9 +178,9 @@ $("opDate").value=todayStr();
 const SEASON_DATA_KEY="tarla360_season_data_v1";
 const OPERATION_KEY="tarla360_operations_v1";
 function getSeasonData(){try{return JSON.parse(localStorage.getItem(SEASON_DATA_KEY)||"{}")}catch(e){return{}}}
-function setSeasonData(o){try{localStorage.setItem(SEASON_DATA_KEY,JSON.stringify(o));return true}catch(e){toast("Sezon bilgileri kaydedilemedi.");return false}}
+function setSeasonData(o){try{localStorage.setItem(SEASON_DATA_KEY,JSON.stringify(o));window.ekinvyaCloud?.queueSave();return true}catch(e){toast("Sezon bilgileri kaydedilemedi.");return false}}
 function getOperations(){try{return JSON.parse(localStorage.getItem(OPERATION_KEY)||"[]")}catch(e){return[]}}
-function setOperations(a){try{localStorage.setItem(OPERATION_KEY,JSON.stringify(a));return true}catch(e){toast("İşlem kaydedilemedi.");return false}}
+function setOperations(a){try{localStorage.setItem(OPERATION_KEY,JSON.stringify(a));window.ekinvyaCloud?.queueSave();return true}catch(e){toast("İşlem kaydedilemedi.");return false}}
 function seasonKey(fieldId,year){return `${fieldId}_${year}`}
 function selectedSeasonYear(){return parseInt($("siYear").value,10)||selYear||new Date().getFullYear()}
 function seasonDataFor(fieldId,year){return getSeasonData()[seasonKey(fieldId,year)]||{}}
@@ -255,7 +255,8 @@ $("operationForm").addEventListener("submit",e=>{
 $("seasonFieldForm").addEventListener("submit",e=>{e.preventDefault();const name=$("sfName").value.trim(),area=num($("sfArea").value);if(!name||!(area>0)){toast("Tarla adı ve dekar zorunludur.");return}const a=getFields(),id=Date.now();a.unshift({id,name,area,ada:$("sfAda").value.trim(),parsel:$("sfParsel").value.trim(),crop:"",location:"",season:"",notes:"",createdAt:new Date().toISOString()});if(setFields(a)){$("seasonFieldForm").reset();renderFields();openField(id);toast("Tarla kaydedildi. Şimdi maliyetleri girebilirsin.")}});
 $("costForm").addEventListener("submit",e=>{e.preventDefault();const amount=num($("cAmt").value),date=$("cDate").value;if(!(amount>0)||!date){toast("Tarih ve geçerli bir tutar gir.");return}const a=getCosts();a.push({id:Date.now(),fieldId:curField,date,cat:$("cCat").value,desc:$("cDesc").value.trim(),amount});if(setCosts(a)){selYear=yearOf(date);$("cAmt").value="";$("cDesc").value="";renderSeason();toast("Maliyet eklendi.")}});
 $("npkCostBtn").addEventListener("click",()=>{const f=getFields().find(x=>x.id===curField),c=costOf(calc());if(!f||c.per==null){toast("Önce NPK hesabı yap ve Maliyet & fiyatlar bölümünde gübre fiyatlarını gir.");return}const a=getCosts(),date=$("cDate").value||todayStr();a.push({id:Date.now(),fieldId:f.id,date,cat:"Gübre",desc:`NPK hesabı (${fmt(c.per)} ₺/da)`,amount:c.per*f.area});if(setCosts(a)){selYear=yearOf(date);renderSeason();toast("Gübre maliyeti eklendi.")}});
-addFert(5,100);renderSaves();renderFields();renderCost();renderSeason();
+window.ekinvyaRefreshData = function(){renderSaves();renderFields();renderCost();renderSeason()};
+addFert(5,100);window.ekinvyaRefreshData();
 
 // Installable offline shell. Location and weather APIs still need an internet connection.
 if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
