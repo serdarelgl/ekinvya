@@ -4,11 +4,11 @@
   const configReady = /^https:\/\/[^\s/]+\/?$/i.test(config.url || "")
     && /^(sb_publishable_[\w-]+|eyJ[\w.-]+)$/.test(config.publishableKey || "");
   const sdk = window.supabase;
-  const client = configReady && sdk?.createClient
+  const client = window.ekinvyaSupabaseClient || (configReady && sdk?.createClient
     ? sdk.createClient(config.url.replace(/\/$/, ""), config.publishableKey, {
       auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
     })
-    : null;
+    : null);
 
   const notice = $("authConfigNotice");
   const guestPanel = $("authGuestPanel");
@@ -97,7 +97,9 @@
     notice.hidden = true;
   }
 
-  function showAccount(user) {
+  let accountTransition = 0;
+
+  function presentAccount(user) {
     unlockApp();
     const name = user.user_metadata?.full_name || user.user_metadata?.name || "Ekinvya üyesi";
     $("authAccountName").textContent = name;
@@ -107,7 +109,26 @@
     notice.hidden = true;
   }
 
+  function showAccount(user) {
+    const transition = ++accountTransition;
+    const cloud = window.ekinvyaCloud;
+    if (!cloud?.loadForUser || cloud.isReadyFor(user.id)) {
+      presentAccount(user);
+      return;
+    }
+    cloud.setStatus("Bulut kayıtları yükleniyor…", "syncing");
+    cloud.loadForUser(user.id).then(() => {
+      if (transition === accountTransition) presentAccount(user);
+    }).catch(error => {
+      if (transition !== accountTransition) return;
+      cloud.reportError(error);
+      presentAccount(user);
+    });
+  }
+
   function showGuest() {
+    accountTransition++;
+    window.ekinvyaCloud?.setSignedOut();
     lockApp();
     guestPanel.hidden = false;
     accountPanel.hidden = true;
@@ -115,6 +136,7 @@
   }
 
   function showRecovery() {
+    accountTransition++;
     guestPanel.hidden = false;
     accountPanel.hidden = true;
     authForm.hidden = true;
@@ -223,6 +245,7 @@
     const button = $("authSignOutButton");
     button.disabled = true;
     try {
+      try { await window.ekinvyaCloud?.flush(); } catch (syncError) { console.warn("Çıkış öncesi bulut eşitlemesi tamamlanamadı:", syncError); }
       const { error } = await client.auth.signOut({ scope: "local" });
       if (error) throw error;
       $("authAccountFeedback").textContent = "Güvenli çıkış yapıldı.";
@@ -275,3 +298,4 @@
     });
   }
 })();
+
