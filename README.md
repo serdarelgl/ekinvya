@@ -6,8 +6,10 @@ Ekinvya; parsel kayıtları, tarımsal hesaplar ve konuma dayalı hava tahminler
 
 - `index.html` — uygulamanın ana sayfası
 - `styles.css` — masaüstü ve mobil arayüz stilleri
-- `app.js` — arayüz, yerel kayıtlar, GPS, Open-Meteo ve Windy bağlantıları
+- `app.js` — arayüz, bulut kayıtları, GPS, Open-Meteo ve Windy bağlantıları
 - `auth.js` ve `supabase-config.js` — e-posta üyeliği, giriş, doğrulama, şifre sıfırlama ve oturum yönetimi
+- `cloud-storage.js` — parsel, maliyet, sezon ve hesap kayıtlarını kullanıcı hesabına göre Supabase ile eşitler
+- `supabase/migrations/202611200001_ekinvya_user_data.sql` — kişisel bulut tablosu ve kullanıcı başına satır güvenliği (RLS)
 - `manifest.webmanifest` ve `service-worker.js` — HTTPS üzerinde ana ekrana ekleme ve uygulama kabuğunu çevrimdışı açma desteği
 - `favicon.svg` — Ekinvya uygulama simgesi
 - `vercel.json` — güvenlik ve konum izni yanıt başlıkları
@@ -31,7 +33,7 @@ npm run check
 
 Bu komut temel proje dosyalarını, HTML kimliklerini, uygulama dosyası bağlantılarını ve JavaScript sözdizimini kontrol eder.
 
-## Üyelik sistemini bağlama
+## Üyelik ve bulut kayıtları
 
 Kayıt/giriş ekranı Supabase Auth ile hazırlanmıştır. Gerçek hesap açılıp giriş yapılabilmesi için:
 
@@ -39,9 +41,10 @@ Kayıt/giriş ekranı Supabase Auth ile hazırlanmıştır. Gerçek hesap açıl
 2. **Project URL** ve **publishable key** değerlerini `supabase-config.js` içindeki boş alanlara ekle. Publishable key istemci uygulamasında kullanılmak üzere tasarlanmıştır; **secret** veya `service_role` anahtarını bu dosyaya hiçbir zaman koyma.
 3. **Authentication → URL Configuration** altında Site URL olarak `https://ekinvya.vercel.app` ve Redirect URLs listesine `https://ekinvya.vercel.app/**` ile `http://localhost:4173/**` ekle.
 4. Üyelikte e-posta doğrulama açıksa, doğrulama ve şifre yenileme e-postaları gerekir. Supabase'in varsayılan SMTP servisi yalnızca proje ekibinde önceden yetkili e-posta adreslerine gönderir ve üretim için tasarlanmamıştır; gerçek kullanıcı kayıtları için özel SMTP ayarla.
-5. `npm run check` çalıştır, sonra değişiklikleri GitHub'a gönder. Vercel deposu bağlıysa yeni dağıtım otomatik başlar.
+5. Supabase SQL Editor'da `supabase/migrations/202611200001_ekinvya_user_data.sql` içeriğini çalıştır. Bu işlem `public.ekinvya_user_data` tablosunu ve yalnızca oturum açmış kullanıcının kendi satırına erişmesini sağlayan RLS politikalarını kurar.
+6. `npm run check` çalıştır, sonra değişiklikleri GitHub'a gönder. Vercel deposu bağlıysa yeni dağıtım otomatik başlar.
 
-Hesaplar Supabase Auth tarafından saklanır. Bu özellik mevcut parsel/hesap kayıtlarını kullanıcı hesabına taşımaz veya cihazlar arasında eşitlemez; bu veriler şu an tarayıcının yerel deposunda kalır. Hesap bazlı senkronizasyon için ayrıca tablolar, Row Level Security (RLS) politikaları ve veri taşıma adımı gerekir.
+Hesaplar Supabase Auth tarafından; uygulama kayıtları ise tek bir JSONB satırında hesap başına saklanır. İlk girişte o tarayıcıdaki eski kayıtlar oturum açan hesaba taşınır. Sonraki cihazlarda aynı hesapla giriş yapılınca bulut verileri indirilir. Aynı tarayıcıda farklı hesaplar kullanılırsa yerel önbellekler hesap kimliğine göre ayrılır. Uygulama, tablo kurulana kadar yerel kayıtları korur ve durum alanında bulut eşitleme sorununu gösterir.
 
 ## GitHub'a yükleme
 
@@ -63,12 +66,11 @@ Vercel'de **Add New → Project** ile GitHub deposunu içe aktar. Framework olar
 
 ## Veri, konum ve servis sınırları
 
-- Parsel ve hesap kayıtları bu prototipte `localStorage` içinde, kullanıcının cihazında tutulur. Hesap, veritabanı veya cihazlar arası eşitleme yoktur. Vercel'e taşımak mevcut tarayıcı kayıtlarını sunucuya kopyalamaz.
+- Parsel, NPK kayıtları, fiyatlar, maliyetler, senaryolar, sezon ve operasyon kayıtları giriş yapan kullanıcının Supabase satırında saklanır; tarayıcı çevrimdışı/ilk yükleme için yerel önbellek kullanır. RLS, farklı hesapların satırlarını ayırır. Bulut eşitlemesi için yukarıdaki SQL migration'ın Supabase projesine uygulanması ve uygulamanın yeni sürümünün dağıtılması gerekir.
 - GPS yalnızca kullanıcı konum düğmesine bastığında istenir. Koordinatlar Open-Meteo hava tahmini isteğine ve Windy haritası bağlantısına gönderilir.
 - Ana sayfa ve ayrıntılı sayısal rapor Open-Meteo verisini kullanır. Open-Meteo ücretsiz API'si ticari olmayan kullanım içindir; ürün ticari amaçla sunulacaksa uygun lisans/API planı gerekir. Veriler CC BY 4.0 atfı ile gösterilir.
 - Windy gömülü haritası kendi katman ve zaman kontrollerini sağlar. Windy Point Forecast sayısal API'si bu projede yapılandırılmadı; makinece okunabilir Windy tahmini için ayrı API erişimi ve sunucu tarafında anahtar yönetimi gerekir. Gizli anahtarları `app.js` içine koyma.
 - Service worker yalnızca uygulamanın aynı kaynaktaki dosyalarını önbelleğe alır. Hava verileri ve Windy haritası internet bağlantısı gerektirir.
 
-## Yayınlamadan önce
+Bulut saklama tek JSONB satırına dayanır; aynı hesabın iki cihazda aynı anda yaptığı düzenlemelerde ayrıntılı alan bazlı birleştirme sağlamaz. Düzenli veritabanı yedeği Supabase projesinin yedekleme ayarlarından ayrıca yönetilmelidir.
 
-Uygulama gerçek kullanıcı verileri veya ticari hava servisi kullanacaksa önce kimlik doğrulama, güvenli sunucu/veritabanı, veri yedekleme ve API lisanslarını planla. Şu anki depo statik MVP dağıtımına hazırdır; bu ek servisler dahil değildir.
