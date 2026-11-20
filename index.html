@@ -25,15 +25,15 @@
     <button data-view="ai"><span class="ico">✦</span> AI Asistan</button>
     <button data-view="profile"><span class="ico">◉</span> Profil</button>
   </nav></div>
-  <div class="sidebottom"><strong>☁ Bulut bağlantısı</strong>Bu prototip şu anda cihazında çalışır. Çoklu cihaz senkronizasyonu için bulut kurulumu sonraki aşamada bağlanacak.</div>
+  <div class="sidebottom"><strong>☁ Hesabına özel bulut kayıtları</strong>Parsel, maliyet, sezon ve NPK kayıtların giriş yaptığın hesabınla eşitlenir.</div>
 </aside>
 <main class="main">
-  <div class="topbar"><div class="crumb">Ekinvya <span style="padding:0 7px;color:#a9b6ac">/</span> <strong id="crumbTitle">Genel Bakış</strong></div><div class="topright"><div class="status"><span class="dot"></span><span>Yerel kayıt modu</span></div><div class="avatar">E</div></div></div>
+  <div class="topbar"><div class="crumb">Ekinvya <span style="padding:0 7px;color:#a9b6ac">/</span> <strong id="crumbTitle">Genel Bakış</strong></div><div class="topright"><div class="status" id="cloudStatus" data-state="pending" role="status" aria-live="polite" title="Bulut durumu"><span class="dot"></span><span id="cloudStatusText">Oturum bekleniyor</span></div><div class="avatar">E</div></div></div>
   <section class="view active" id="view-dashboard">
     <div class="heading"><div><div class="eyebrow">2026 / 2027 ÜRETİM SEZONU</div><h1>Tarımın kontrolü sende.</h1><p>Hesapla, takip et, maliyetini bil. Her şey tek menüde.</p></div><button class="primary" onclick="showView('npk')">＋ Yeni NPK hesabı</button></div>
     <div class="stats">
       <div class="stat"><div class="stat-top">Kayıtlı parsel sayısı <span class="stat-icon">▧</span></div><strong id="statFields">0</strong><small>Henüz parsel eklenmedi</small></div>
-      <div class="stat"><div class="stat-top">NPK hesapları <span class="stat-icon">◉</span></div><strong id="statCalcs">0</strong><small>Bu cihazda kayıtlı hesap</small></div>
+      <div class="stat"><div class="stat-top">NPK hesapları <span class="stat-icon">◉</span></div><strong id="statCalcs">0</strong><small>Hesabına kaydedilmiş</small></div>
       <div class="stat"><div class="stat-top">Toplam alan <span class="stat-icon">⌁</span></div><strong id="statArea">0 <small>da</small></strong><small>Parsel kayıtlarına göre</small></div>
       <div class="stat"><div class="stat-top">Bu yıl maliyet <span class="stat-icon">₺</span></div><strong id="statCost">—</strong><small>Tüm tarlalar toplamı</small></div>
     </div>
@@ -44,7 +44,7 @@
     <div class="contentgrid">
       <div class="leftcol">
         <section class="panel">
-          <div class="panelhead"><div><h2>Son hesaplamalar</h2><p>Bu tarayıcıda kaydettiğin NPK hesapları.</p></div><button class="secondary" onclick="showView('reports')">Tüm kayıtlar →</button></div>
+          <div class="panelhead"><div><h2>Son hesaplamalar</h2><p>Hesabına kaydettiğin NPK hesapları.</p></div><button class="secondary" onclick="showView('reports')">Tüm kayıtlar →</button></div>
           <div id="recentCalcs" class="quicklist"><div class="quickitem"><div class="quickicon">◉</div><div><strong>Henüz kayıt yok</strong><small>İlk hesabını yapıp kaydedebilirsin.</small></div></div></div>
         </section>
       </div>
@@ -61,7 +61,7 @@
           <div class="quicklist">
             <div class="quickitem"><div class="quickicon">✓</div><div><strong>Responsive arayüz</strong><small>Telefon ve masaüstü düzeni</small></div><span class="arrow">✓</span></div>
             <div class="quickitem"><div class="quickicon">✓</div><div><strong>Canlı NPK hesabı</strong><small>Etiket oranı ve alan bazlı hesap</small></div><span class="arrow">✓</span></div>
-            <div class="quickitem"><div class="quickicon">☁</div><div><strong>Bulut senkronizasyonu</strong><small>Kimlik doğrulama ve veritabanı gerekli</small></div><span class="arrow">→</span></div>
+            <div class="quickitem"><div class="quickicon">☁</div><div><strong>Bulut senkronizasyonu</strong><small>Kayıtların giriş yaptığın hesapla eşitlenir</small></div><span class="arrow">→</span></div>
           </div>
         </section>
       </div>
@@ -92,7 +92,7 @@
   <section class="view" id="view-fields">
     <div class="heading"><div><div class="eyebrow">ARAZİ YÖNETİMİ</div><h1>Tarlalarım</h1><p>Eklediğin tarlalar burada ve genel bakışta görüntülenir.</p></div></div>
     <section class="panel">
-      <div class="panelhead"><div><h2>Yeni tarla ekle</h2><p>Parsel bilgilerini kaydet; genel bakıştaki liste ve toplam alan otomatik güncellensin.</p></div><span class="tag">YEREL KAYIT</span></div>
+      <div class="panelhead"><div><h2>Yeni tarla ekle</h2><p>Parsel bilgilerini kaydet; genel bakıştaki liste ve toplam alan otomatik güncellensin.</p></div><span class="tag">HESAP KAYDI</span></div>
       <form id="fieldForm">
         <div class="formgrid">
           <div class="field"><label for="fieldName">Tarla / parsel adı *</label><input id="fieldName" required maxlength="80" placeholder="Örn. Kırkgöz kuzey parseli"></div>
@@ -118,7 +118,7 @@
     <div id="seasonList">
       <div class="heading"><div><div class="eyebrow">ÜRETİM GÜNLÜĞÜ</div><h1>Tarla giderleri</h1><p>Bir tarla seç. Giderini ekle. Dekar maliyetini anında gör.</p></div><button class="primary" data-view="fields" onclick="showView(this.dataset.view)">＋ Tarla ekle</button></div>
       <section class="panel">
-        <div class="panelhead"><div><h2>Yeni tarla ekle</h2><p>Kayıttan sonra doğrudan maliyet girişine geçersin.</p></div><span class="tag">YEREL KAYIT</span></div>
+        <div class="panelhead"><div><h2>Yeni tarla ekle</h2><p>Kayıttan sonra doğrudan maliyet girişine geçersin.</p></div><span class="tag">HESAP KAYDI</span></div>
         <form id="seasonFieldForm"><div class="formgrid">
           <div class="field"><label for="sfName">Tarla adı *</label><input id="sfName" maxlength="80" placeholder="Örn. Yol üstü tarla"></div>
           <div class="field"><label for="sfArea">Dekar *</label><input id="sfArea" inputmode="decimal" placeholder="Örn. 25"></div>
@@ -206,7 +206,7 @@
   <section class="view" id="view-costs">
     <div class="heading"><div><div class="eyebrow">GİRDİ EKONOMİSİ</div><h1>Maliyet & Gübre Fiyatları</h1><p>Fiyatları gir, NPK hesabının maliyetini gör, senaryoları karşılaştır.</p></div></div>
     <section class="panel">
-      <div class="panelhead"><div><h2>Gübre fiyatları</h2><p>Fiyatı ₺/kg, ₺/çuval (50 kg) ya da ₺/ton olarak girebilirsin.</p></div><span class="tag">YEREL KAYIT</span></div>
+      <div class="panelhead"><div><h2>Gübre fiyatları</h2><p>Fiyatı ₺/kg, ₺/çuval (50 kg) ya da ₺/ton olarak girebilirsin.</p></div><span class="tag">HESAP KAYDI</span></div>
       <div class="tablewrap"><table><thead><tr><th>Gübre</th><th>Fiyat</th><th>Birim</th><th>₺/kg</th></tr></thead><tbody id="priceBody"></tbody></table></div>
       <div class="notice">Fiyatlar senin girdiğin tahmini değerlerdir; güncel bayi fiyatlarıyla güncelle. “Özel gübre” satırı, listede olmayan tüm özel gübreler için ortak kullanılır.</div>
     </section>
@@ -237,7 +237,7 @@
     <div class="heading"><div><div class="eyebrow">EKİNVYA HESABI</div><h1>Ekinvya’ya giriş yap</h1><p>Devam etmek için hesabına giriş yap. Henüz hesabın yoksa ücretsiz üyelik oluştur.</p></div></div>
     <div id="authConfigNotice" class="auth-notice" role="status" aria-live="polite" hidden></div>
     <div id="authGuestPanel" class="auth-layout">
-      <aside class="auth-intro"><span class="auth-mark" aria-hidden="true">✳</span><div class="eyebrow">TARLALARIN SENİNLE</div><h2>Tarlalarını Ekinvya’da takip et</h2><p>Hesabınla giriş yap veya yeni bir üyelik oluşturarak Ekinvya’yı kullanmaya başla. Parsel ve hesap kayıtları şimdilik bu cihazda tutulmaya devam eder.</p><ul><li>✦ E-posta ve parola ile güvenli giriş</li><li>✦ E-posta doğrulama akışı</li><li>✦ Şifre yenileme ve oturumu kapatma</li></ul></aside>
+      <aside class="auth-intro"><span class="auth-mark" aria-hidden="true">✳</span><div class="eyebrow">TARLALARIN SENİNLE</div><h2>Tarlalarını Ekinvya’da takip et</h2><p>Hesabınla giriş yap veya yeni bir üyelik oluşturarak Ekinvya’yı kullanmaya başla. Parsel, maliyet, sezon ve NPK kayıtların hesabında saklanır ve giriş yaptığın cihazlarda eşitlenir.</p><ul><li>✦ E-posta ve parola ile güvenli giriş</li><li>✦ E-posta doğrulama akışı</li><li>✦ Şifre yenileme ve oturumu kapatma</li></ul></aside>
       <div class="panel auth-card">
         <div class="auth-tabs" id="authTabs" role="group" aria-label="Hesap işlemi"><button type="button" class="active" id="authLoginTab" aria-pressed="true" data-auth-mode="login">Giriş yap</button><button type="button" id="authSignupTab" aria-pressed="false" data-auth-mode="signup">Üye ol</button></div>
         <form id="authForm" novalidate>
@@ -268,10 +268,12 @@
 <div class="toast" id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.min.js" defer crossorigin="anonymous"></script>
 <script src="./supabase-config.js" defer></script>
+<script src="./cloud-storage.js" defer></script>
 <script src="./app.js" defer></script>
 <script src="./auth.js" defer></script>
 </body>
 </html>
+
 
 
 

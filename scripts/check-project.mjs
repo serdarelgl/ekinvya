@@ -11,6 +11,8 @@ const requiredFiles = [
   "app.js",
   "auth.js",
   "supabase-config.js",
+  "cloud-storage.js",
+  "supabase/migrations/202611200001_ekinvya_user_data.sql",
   "manifest.webmanifest",
   "service-worker.js",
   "vercel.json",
@@ -26,7 +28,7 @@ const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
 const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
 if (duplicates.length) throw new Error(`Yinelenen HTML kimlikleri: ${[...new Set(duplicates)].join(", ")}`);
 
-for (const reference of ["./styles.css", "./app.js", "./auth.js", "./supabase-config.js", "./manifest.webmanifest", "./favicon.svg"]) {
+for (const reference of ["./styles.css", "./app.js", "./auth.js", "./supabase-config.js", "./cloud-storage.js", "./manifest.webmanifest", "./favicon.svg"]) {
   if (!html.includes(reference)) throw new Error(`index.html içinde dosya bağlantısı eksik: ${reference}`);
 }
 if (/<style(?:\s|>)/i.test(html) || /<script>([\s\S]*?)<\/script>/i.test(html)) {
@@ -35,7 +37,7 @@ if (/<style(?:\s|>)/i.test(html) || /<script>([\s\S]*?)<\/script>/i.test(html)) 
 
 const syntax = spawnSync(process.execPath, ["--check", resolve(root, "app.js")], { encoding: "utf8" });
 if (syntax.status !== 0) throw new Error(syntax.stderr || "app.js sözdizimi kontrolü başarısız.");
-for (const file of ["auth.js", "supabase-config.js", "service-worker.js", "scripts/serve.mjs", "scripts/check-project.mjs"]) {
+for (const file of ["auth.js", "supabase-config.js", "cloud-storage.js", "service-worker.js", "scripts/serve.mjs", "scripts/check-project.mjs"]) {
   const result = spawnSync(process.execPath, ["--check", resolve(root, file)], { encoding: "utf8" });
   if (result.status !== 0) throw new Error(result.stderr || `${file} sözdizimi kontrolü başarısız.`);
 }
@@ -47,3 +49,4 @@ for (const id of ["authConfigNotice", "authForm", "authRecoveryForm", "authAccou
   if (!ids.includes(id)) throw new Error(`Üyelik arayüzü eksik: ${id}`);
 }
 console.log(`Ekinvya proje kontrolü başarılı (${requiredFiles.length} ana dosya, ${ids.length} HTML kimliği).`);
+
