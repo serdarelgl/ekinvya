@@ -7,6 +7,7 @@ import { resolve } from "node:path";
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const requiredFiles = [
   "index.html",
+  "aydinlatma.html",
   "styles.css",
   "app.js",
   "auth.js",
@@ -48,5 +49,8 @@ JSON.parse(await readFile(resolve(root, "manifest.webmanifest"), "utf8"));
 JSON.parse(await readFile(resolve(root, "package.json"), "utf8"));
 for (const id of ["authConfigNotice", "authForm", "authRecoveryForm", "authAccountPanel"]) {
   if (!ids.includes(id)) throw new Error(`Üyelik arayüzü eksik: ${id}`);
+}
+if (!html.includes('id="authNoticeAck"') || !html.includes('href="./aydinlatma.html"')) {
+  throw new Error("Üyelikte aydınlatma metni bağlantısı veya bilgilendirme alanı eksik.");
 }
 console.log(`Ekinvya proje kontrolü başarılı (${requiredFiles.length} ana dosya, ${ids.length} HTML kimliği).`);

@@ -5,6 +5,7 @@ Ekinvya; parsel kayıtları, tarımsal hesaplar ve konuma dayalı hava tahminler
 ## Proje yapısı
 
 - `index.html` — uygulamanın ana sayfası
+- `aydinlatma.html` — üyelik sırasında bağlantı verilen KVKK aydınlatma metni taslağı
 - `styles.css` — masaüstü ve mobil arayüz stilleri
 - `app.js` — arayüz, bulut kayıtları, GPS, Open-Meteo ve Windy bağlantıları
 - `auth.js` ve `supabase-config.js` — e-posta üyeliği, giriş, doğrulama, şifre sıfırlama ve oturum yönetimi
@@ -35,34 +36,21 @@ Bu komut temel proje dosyalarını, HTML kimliklerini, uygulama dosyası bağlan
 
 ## Üyelik ve bulut kayıtları
 
-Kayıt/giriş ekranı Supabase Auth ile hazırlanmıştır. Gerçek hesap açılıp giriş yapılabilmesi için:
+Kayıt/giriş ekranı Supabase Auth kullanır. Proje URL'si ve istemcide kullanılabilen publishable key `supabase-config.js` içinde tanımlıdır. Gizli `secret` veya `service_role` anahtarları istemci dosyalarına eklenmemelidir.
 
-1. Supabase'de bir proje oluştur ve **Authentication → Sign In / Providers** bölümünde e-posta/şifre girişini etkinleştir.
-2. **Project URL** ve **publishable key** değerlerini `supabase-config.js` içindeki boş alanlara ekle. Publishable key istemci uygulamasında kullanılmak üzere tasarlanmıştır; **secret** veya `service_role` anahtarını bu dosyaya hiçbir zaman koyma.
-3. **Authentication → URL Configuration** altında Site URL olarak `https://ekinvya.vercel.app` ve Redirect URLs listesine `https://ekinvya.vercel.app/**` ile `http://localhost:4173/**` ekle.
-4. Üyelikte e-posta doğrulama açıksa, doğrulama ve şifre yenileme e-postaları gerekir. Supabase'in varsayılan SMTP servisi yalnızca proje ekibinde önceden yetkili e-posta adreslerine gönderir ve üretim için tasarlanmamıştır; gerçek kullanıcı kayıtları için özel SMTP ayarla.
-5. Supabase SQL Editor'da `supabase/migrations/202611200001_ekinvya_user_data.sql` içeriğini çalıştır. Bu işlem `public.ekinvya_user_data` tablosunu ve yalnızca oturum açmış kullanıcının kendi satırına erişmesini sağlayan RLS politikalarını kurar.
-6. `npm run check` çalıştır, sonra değişiklikleri GitHub'a gönder. Vercel deposu bağlıysa yeni dağıtım otomatik başlar.
+Yayın ortamını yapılandırırken:
+
+1. **Authentication → Sign In / Providers** içinde e-posta/şifre girişini etkinleştir.
+2. **Authentication → URL Configuration** içinde Site URL olarak `https://www.ekinvya.com` ayarla. Redirect URL listesinde `https://www.ekinvya.com/**`, `https://ekinvya.com/**` ve yerel geliştirme için `http://localhost:4173/**` bulunsun.
+3. E-posta doğrulaması ve şifre sıfırlama için özel SMTP kullan. SMTP parolasını yalnızca Supabase panelinde tut; kaynak koduna veya GitHub'a ekleme.
+4. `public.ekinvya_user_data` tablosu henüz yoksa `supabase/migrations/202611200001_ekinvya_user_data.sql` migration'ını Supabase SQL Editor'da bir kez uygula. Tablo ve RLS politikaları mevcutsa tekrar çalıştırmaya gerek yoktur.
+5. Değişiklikleri göndermeden önce `npm run check` çalıştır.
 
 Hesaplar Supabase Auth tarafından; uygulama kayıtları ise tek bir JSONB satırında hesap başına saklanır. İlk girişte o tarayıcıdaki eski kayıtlar oturum açan hesaba taşınır. Sonraki cihazlarda aynı hesapla giriş yapılınca bulut verileri indirilir. Aynı tarayıcıda farklı hesaplar kullanılırsa yerel önbellekler hesap kimliğine göre ayrılır. Uygulama, tablo kurulana kadar yerel kayıtları korur ve durum alanında bulut eşitleme sorununu gösterir.
 
-## GitHub'a yükleme
+## GitHub ve Vercel dağıtımı
 
-GitHub'da boş bir depo oluşturduktan sonra proje klasöründe:
-
-```sh
-git init -b main
-git add .
-git commit -m "Ekinvya uygulamasını hazırla"
-git remote add origin https://github.com/KULLANICI_ADI/DEPO_ADI.git
-git push -u origin main
-```
-
-`ekinvya_v4_Tarla_Sezon_Islem_Karlilik.html`, yerel yedek olarak klasörde tutulur ve `.gitignore` ile depoya eklenmez. Yayınlanan sürüm, ayrıştırılmış `index.html`, `styles.css` ve `app.js` dosyalarını kullanır.
-
-## Vercel'de yayınlama
-
-Vercel'de **Add New → Project** ile GitHub deposunu içe aktar. Framework olarak **Other** seç; build komutu ve output directory gerekmez. `index.html` depo kökünde bulunduğu için Vercel statik dosyaları doğrudan sunar. HTTPS alan adı etkinleşince telefonda konum izni ve ana ekrana ekleme kullanılabilir.
+Kaynak depo `serdarelgl/ekinvya`, üretim dalı `main`'dir. Depo Vercel projesine bağlıysa `main` dalına gönderilen commit otomatik üretim dağıtımı başlatır. Uygulama kökteki `index.html` üzerinden statik olarak sunulur; özel build komutu gerekmez. `ekinvya_v4_Tarla_Sezon_Islem_Karlilik.html` yerel yedektir ve `.gitignore` ile dışarıda bırakılır.
 
 ## Veri, konum ve servis sınırları
 
@@ -71,6 +59,10 @@ Vercel'de **Add New → Project** ile GitHub deposunu içe aktar. Framework olar
 - Ana sayfa ve ayrıntılı sayısal rapor Open-Meteo verisini kullanır. Open-Meteo ücretsiz API'si ticari olmayan kullanım içindir; ürün ticari amaçla sunulacaksa uygun lisans/API planı gerekir. Veriler CC BY 4.0 atfı ile gösterilir.
 - Windy gömülü haritası kendi katman ve zaman kontrollerini sağlar. Windy Point Forecast sayısal API'si bu projede yapılandırılmadı; makinece okunabilir Windy tahmini için ayrı API erişimi ve sunucu tarafında anahtar yönetimi gerekir. Gizli anahtarları `app.js` içine koyma.
 - Service worker yalnızca uygulamanın aynı kaynaktaki dosyalarını önbelleğe alır. Hava verileri ve Windy haritası internet bağlantısı gerektirir.
+- Üyelikteki zorunlu kutu, aydınlatma metninin okunduğunu kaydeder; açık rıza değildir. Sürüm ve zaman damgası Supabase `user_metadata` alanına yazılır ve değiştirilemez denetim kaydı sayılmaz.
+
+### KVKK metni yayıma hazırlama
+
+`aydinlatma.html` uygulamanın gerçek veri akışlarına göre hazırlanmış bir taslaktır. İçindeki köşeli parantezli işletmeci adı, adres ve KVKK iletişim alanları doldurulmalı; Supabase, Vercel, SMTP, Open-Meteo ve Windy için veri işleme konumu, saklama süresi ve gerekiyorsa yurt dışına aktarım mekanizması doğrulanmalıdır. Metin bu bilgiler tamamlanmadan nihai hukuki metin olarak değerlendirilmemelidir.
 
 Bulut saklama tek JSONB satırına dayanır; aynı hesabın iki cihazda aynı anda yaptığı düzenlemelerde ayrıntılı alan bazlı birleştirme sağlamaz. Düzenli veritabanı yedeği Supabase projesinin yedekleme ayarlarından ayrıca yönetilmelidir.
-

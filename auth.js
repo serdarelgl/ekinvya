@@ -70,6 +70,8 @@
     const signup = mode === "signup";
     $("authNameField").hidden = !signup;
     $("authConfirmField").hidden = !signup;
+    $("authNoticeField").hidden = !signup;
+    $("authNoticeAck").required = signup;
     $("authForgotButton").hidden = signup;
     $("authName").required = signup;
     $("authPasswordConfirm").required = signup;
@@ -172,7 +174,11 @@
           email,
           password,
           options: {
-            data: { full_name: $("authName").value.trim() },
+            data: {
+              full_name: $("authName").value.trim(),
+              privacy_notice_version: "2026-11-20",
+              privacy_notice_acknowledged_at: new Date().toISOString()
+            },
             emailRedirectTo: `${location.origin}${location.pathname}`
           }
         })
@@ -257,7 +263,12 @@
   }
 
   document.querySelectorAll("[data-auth-mode]").forEach(button => {
-    button.addEventListener("click", () => setMode(button.dataset.authMode));
+    button.addEventListener("click", () => {
+      setMode(button.dataset.authMode);
+      if (button.hasAttribute("data-auth-scroll")) {
+        $("authSection").scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    });
   });
   authForm.addEventListener("submit", handleSubmit);
   recoveryForm.addEventListener("submit", updatePassword);
@@ -298,4 +309,3 @@
     });
   }
 })();
-

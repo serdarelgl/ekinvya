@@ -1,7 +1,8 @@
-const CACHE_NAME = "ekinvya-shell-v5";
+const CACHE_NAME = "ekinvya-shell-v6";
 const APP_SHELL = [
   "./",
   "./index.html",
+  "./aydinlatma.html",
   "./styles.css",
   "./app.js",
   "./auth.js",
