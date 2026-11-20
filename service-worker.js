@@ -1,4 +1,4 @@
-const CACHE_NAME = "ekinvya-shell-v4";
+const CACHE_NAME = "ekinvya-shell-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -7,6 +7,7 @@ const APP_SHELL = [
   "./auth.js",
   "./supabase-config.js",
   "./cloud-storage.js",
+  "./vendor/supabase.min.js",
   "./manifest.webmanifest",
   "./favicon.svg"
 ];
@@ -47,4 +48,3 @@ self.addEventListener("fetch", event => {
     }
   })());
 });
-

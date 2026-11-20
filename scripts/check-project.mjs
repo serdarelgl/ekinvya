@@ -12,6 +12,7 @@ const requiredFiles = [
   "auth.js",
   "supabase-config.js",
   "cloud-storage.js",
+  "vendor/supabase.min.js",
   "supabase/migrations/202611200001_ekinvya_user_data.sql",
   "manifest.webmanifest",
   "service-worker.js",
@@ -28,7 +29,7 @@ const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
 const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
 if (duplicates.length) throw new Error(`Yinelenen HTML kimlikleri: ${[...new Set(duplicates)].join(", ")}`);
 
-for (const reference of ["./styles.css", "./app.js", "./auth.js", "./supabase-config.js", "./cloud-storage.js", "./manifest.webmanifest", "./favicon.svg"]) {
+for (const reference of ["./styles.css", "./app.js", "./auth.js", "./supabase-config.js", "./cloud-storage.js", "./vendor/supabase.min.js", "./manifest.webmanifest", "./favicon.svg"]) {
   if (!html.includes(reference)) throw new Error(`index.html içinde dosya bağlantısı eksik: ${reference}`);
 }
 if (/<style(?:\s|>)/i.test(html) || /<script>([\s\S]*?)<\/script>/i.test(html)) {
@@ -49,4 +50,3 @@ for (const id of ["authConfigNotice", "authForm", "authRecoveryForm", "authAccou
   if (!ids.includes(id)) throw new Error(`Üyelik arayüzü eksik: ${id}`);
 }
 console.log(`Ekinvya proje kontrolü başarılı (${requiredFiles.length} ana dosya, ${ids.length} HTML kimliği).`);
-

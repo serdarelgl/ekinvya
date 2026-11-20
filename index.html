@@ -253,7 +253,7 @@
         <p class="auth-security-note">Şifren Ekinvya tarafından okunmaz veya yerel uygulama dosyasında saklanmaz. Kimlik doğrulama Supabase Auth üzerinden yürütülür.</p>
       </div>
     </div>
-    <section id="authAccountPanel" class="panel auth-account" hidden><div class="auth-account-icon" aria-hidden="true">✓</div><div><div class="eyebrow">OTURUM AÇIK</div><h2 id="authAccountName">Ekinvya hesabın</h2><p id="authAccountEmail"></p><p class="auth-security-note">Hesabın hazır. Parsel ve maliyet kayıtlarının hesaplar arasında eşitlenmesi ayrıca kurulacak.</p></div><button class="secondary" type="button" id="authSignOutButton">Güvenli çıkış</button><p id="authAccountFeedback" class="auth-feedback" role="status" aria-live="polite"></p></section>
+    <section id="authAccountPanel" class="panel auth-account" hidden><div class="auth-account-icon" aria-hidden="true">✓</div><div><div class="eyebrow">OTURUM AÇIK</div><h2 id="authAccountName">Ekinvya hesabın</h2><p id="authAccountEmail"></p><p class="auth-security-note">Hesabın hazır. Parsel ve maliyet kayıtların bu hesapla bulut üzerinden eşitlenir.</p></div><button class="secondary" type="button" id="authSignOutButton">Güvenli çıkış</button><p id="authAccountFeedback" class="auth-feedback" role="status" aria-live="polite"></p></section>
   </section>  <section class="view" id="view-farmers"><div class="pageplaceholder"><div class="eyebrow">MÜŞTERİ İLİŞKİLERİ</div><h2>Çiftçi CRM</h2><p>Çiftçi iletişim bilgileri, görüşme notları, ürün ilgisi, teklif geçmişi ve parsel bağlantıları için güvenli, yetkili erişime sahip bir kayıt sistemi planlanıyor.</p></div></section>
   <section class="view" id="view-reports"><div class="pageplaceholder"><div class="eyebrow">ANALİZ VE ÇIKTILAR</div><h2>Raporlar & Kayıtlar</h2><p>Kaydettiğin hesapları görüntüleyebilir, CSV dosyası olarak dışa aktarabilir ve yazdırma ekranından PDF oluşturabilirsin.</p><div id="allCalcs" class="quicklist" style="margin-top:22px"></div></div></section>
 </main>
@@ -266,14 +266,13 @@
   <button data-view="profile"><span>◉</span>Profil</button>
 </nav>
 <div class="toast" id="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/dist/umd/supabase.min.js" defer crossorigin="anonymous"></script>
+<script src="./vendor/supabase.min.js" defer crossorigin="anonymous"></script>
 <script src="./supabase-config.js" defer></script>
 <script src="./cloud-storage.js" defer></script>
 <script src="./app.js" defer></script>
 <script src="./auth.js" defer></script>
 </body>
 </html>
-
 
 
 
