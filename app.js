@@ -65,7 +65,7 @@ function showView(view){
  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));
  document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
  const labels={dashboard:"Ana Sayfa",weather:"Hava Durumu",ai:"AI Asistan",profile:"Profil",npk:"NPK Hesap Makinesi",fields:"Parsellerim",ndvi:"Sentinel‑2 NDVI",season:"Sezon Takibi",soil:"Toprak Analizleri",costs:"Maliyet & Gübre Fiyatları",farmers:"Çiftçi CRM",reports:"Raporlar"};
- $("crumbTitle").textContent=labels[view]||"Genel Bakış";window.scrollTo({top:0,behavior:"smooth"});if(view==="fields"){window.ekinvyaFieldMap?.init();window.ekinvyaFieldMap?.resize();window.ekinvyaFieldMap?.refreshSelect()}if(view==="reports")renderSaves();if(view==="weather"&&window.ekinvyaWeatherPosition)updateWindyFrames(window.ekinvyaWeatherPosition);if(view==="costs")renderCost();if(view==="season"){curField=null;renderSeason()}
+ $("crumbTitle").textContent=labels[view]||"Genel Bakış";window.scrollTo({top:0,behavior:"smooth"});if(view==="fields")window.ekinvyaFieldMap?.refreshSelect();if(view==="reports")renderSaves();if(view==="weather"&&window.ekinvyaWeatherPosition)updateWindyFrames(window.ekinvyaWeatherPosition);if(view==="costs")renderCost();if(view==="season"){curField=null;renderSeason()}
 }
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.view)));
  const weatherStatusHome=$("weatherStatusHome"),weatherStatusPage=$("weatherStatusPage");
@@ -96,15 +96,81 @@ const FIELD_KEY="tarla360_fields_v1";
 function getFields(){try{return JSON.parse(localStorage.getItem(FIELD_KEY)||"[]")}catch(e){return []}}
 window.ekinvyaGetFields=getFields;
 function setFields(a){try{localStorage.setItem(FIELD_KEY,JSON.stringify(a));window.ekinvyaCloud?.queueSave();return true}catch(e){toast("Tarla kaydı yapılamadı. Tarayıcı depolamasını kontrol et.");return false}}
+function fieldPreview(geometry){
+ const polygons=geometry?.type==="Polygon"?[geometry.coordinates]:geometry?.type==="MultiPolygon"?geometry.coordinates:[];
+ const points=polygons.flatMap(p=>Array.isArray(p?.[0])?p[0]:[]).filter(point=>Array.isArray(point)&&Number.isFinite(Number(point[0]))&&Number.isFinite(Number(point[1])));
+ if(points.length<3)return '<div class="field-map-empty"><span aria-hidden="true">⌖</span><small>Sınır çizilmedi</small></div>';
+ const xs=points.map(point=>Number(point[0])),ys=points.map(point=>Number(point[1])),minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),dx=maxX-minX||1,dy=maxY-minY||1;
+ const paths=polygons.map(p=>{const ring=p?.[0];if(!Array.isArray(ring)||ring.length<3)return "";return ring.map((point,index)=>`${index?"L":"M"}${12+(Number(point[0])-minX)/dx*176} ${88-(Number(point[1])-minY)/dy*68}`).join(" ")+" Z"}).filter(Boolean).join(" ");
+ return `<svg class="field-map-preview" viewBox="0 0 200 100" role="img" aria-label="Kayıtlı parsel sınırı"><path d="${paths}" fill="#87b96866" stroke="#d9efaa" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
 function renderFields(){
  const fields=getFields();
  $("statFields").textContent=fields.length;
  $("statArea").innerHTML=`${fmt(fields.reduce((s,f)=>s+num(f.area),0))} <small>da</small>`;
- $("fieldCountTag").textContent=`${fields.length} TARLA`;
- const card=f=>`<div class="quickitem"><div class="quickicon" aria-hidden="true">🌾</div><div class="field-summary"><button class="field-focus" type="button" onclick="focusField(${f.id})" aria-label="${escapeHtml(f.name)} tarlasını haritada göster">${escapeHtml(f.name)} · ${fmt(f.area)} da</button><small>${[(f.ada||f.parsel)?`Ada ${f.ada||"-"} / Parsel ${f.parsel||"-"}`:"",f.crop,f.location,f.season].filter(Boolean).map(escapeHtml).join(" · ")||"Ek bilgi girilmedi"}${f.notes?`<br>${escapeHtml(f.notes)}`:""}${f.geometry?"<br><span class=\"satellite-badge\">✓ Sınır çizildi</span>":""}</small></div><div class="fieldactions">${f.geometry?`<button class="secondary" onclick="showNdvi(${f.id})">NDVI</button>`:`<button class="secondary" onclick="drawFieldBoundary(${f.id})">Sınır çiz</button>`}<button class="secondary" onclick="useFieldForNpk(${f.id})">NPK</button><button class="secondary" onclick="deleteField(${f.id})">Sil</button></div></div>`;
- $("dashboardFields").innerHTML=fields.length?fields.map(card).join(""):`<div class="quickitem"><div class="quickicon">▧</div><div><strong>Henüz tarla eklenmedi</strong><small>“Tarla ekle” ile ilk parselini kaydet.</small></div></div>`;
- $("fieldsList").innerHTML=fields.length?fields.map(card).join(""):`<div class="emptyhint">Henüz tarla kaydı yok. Yukarıdaki formdan ilk tarlanı ekleyebilirsin.</div>`;
+ $("fieldCountTag").textContent=fields.length;
+ $("sidebarParcelBadge").textContent=fields.length;
+ $("fieldAreaTotal").textContent=`${fmt(fields.reduce((sum,field)=>sum+num(field.area),0))} da`;
+ $("fieldHectareTotal").textContent=`${fmt(fields.reduce((sum,field)=>sum+num(field.area),0)/10,1)} ha toplam`;
+ $("fieldBoundaryCount").textContent=`${fields.filter(field=>field.geometry).length} / ${fields.length}`;
+ const query=$("fieldSearchInput").value.trim().toLocaleLowerCase("tr-TR"),crop=$("fieldCropFilter").value;
+ const visible=fields.filter(field=>{
+   const matchesCrop=crop==="ALL"||field.crop===crop;
+   const searchable=[field.name,field.location,field.crop,field.ada,field.parsel,field.season].filter(Boolean).join(" ").toLocaleLowerCase("tr-TR");
+   return matchesCrop&&(!query||searchable.includes(query));
+ });
+ const card=field=>{
+   const latest=field.ndviHistory?.[0],observations=latest?.observations||[],ndvi=observations.length?Number(observations[observations.length-1].mean):null;
+   const cropIcon={"Buğday":"🌾","Arpa":"🌿","Kanola":"🌼","Ayçiçeği":"🌻","Mısır":"🌽"}[field.crop]||"🌱";
+   const info=[field.location,field.crop,field.season].filter(Boolean).map(escapeHtml).join(" · ");
+   return `<article class="field-card"><button class="field-card-map" type="button" data-field-action="focus" data-field-id="${escapeHtml(field.id)}" aria-label="${escapeHtml(field.name)} sınırını haritada göster">${fieldPreview(field.geometry)}<span class="field-card-map-tag">${field.geometry?"SINIR KAYITLI":"SINIR BEKLİYOR"}</span></button><div class="field-card-body"><div class="field-card-titleline"><span class="field-crop-icon" aria-hidden="true">${cropIcon}</span><div class="field-card-titlewrap"><button class="field-card-title" type="button" data-field-action="focus" data-field-id="${escapeHtml(field.id)}">${escapeHtml(field.name)}</button><small>${info||"Ürün ve konum bilgisi eklenmemiş"}</small></div><span class="field-card-area">${fmt(field.area)} <small>da</small></span></div><div class="field-card-meta"><span>${field.ada||field.parsel?`Ada ${escapeHtml(field.ada||"—")} · Parsel ${escapeHtml(field.parsel||"—")}`:"Parsel bilgisi girilmedi"}</span><span>${ndvi!==null&&Number.isFinite(ndvi)?`Son NDVI ${ndvi.toFixed(3)}`:"Uydu analizi yapılmadı"}</span></div>${field.notes?`<p class="field-card-note">${escapeHtml(field.notes)}</p>`:""}<div class="field-card-actions">${field.geometry?`<button class="secondary" type="button" data-field-action="ndvi" data-field-id="${escapeHtml(field.id)}">NDVI analizi</button>`:`<button class="secondary" type="button" data-field-action="draw" data-field-id="${escapeHtml(field.id)}">Sınır çiz</button>`}<button class="secondary" type="button" data-field-action="npk" data-field-id="${escapeHtml(field.id)}">NPK hesabı</button><button class="field-delete" type="button" data-field-action="delete" data-field-id="${escapeHtml(field.id)}" aria-label="${escapeHtml(field.name)} tarlasını sil">Sil</button></div></div></article>`;
+ };
+ $("dashboardFields").innerHTML=fields.length?fields.slice(0,4).map(field=>`<div class="quickitem"><div class="quickicon" aria-hidden="true">${{"Buğday":"🌾","Arpa":"🌿","Kanola":"🌼","Ayçiçeği":"🌻","Mısır":"🌽"}[field.crop]||"🌱"}</div><div class="field-summary"><button class="field-focus" type="button" data-dashboard-field="${escapeHtml(field.id)}">${escapeHtml(field.name)} · ${fmt(field.area)} da</button><small>${[field.crop,field.location].filter(Boolean).map(escapeHtml).join(" · ")||"Ürün ve konum bilgisi eklenmemiş"}${field.geometry?" · Sınır kayıtlı":""}</small></div></div>`).join(""):`<div class="quickitem"><div class="quickicon">▧</div><div><strong>Henüz tarla eklenmedi</strong><small>“Tarla ekle” ile ilk parselini kaydet.</small></div></div>`;
+ $("fieldsList").innerHTML=visible.length?visible.map(card).join(""):fields.length?`<div class="field-empty"><strong>Aramana uygun parsel yok</strong><span>Arama metnini veya ürün filtresini değiştirebilirsin.</span></div>`:`<div class="field-empty"><span class="field-empty-icon" aria-hidden="true">▧</span><strong>Henüz parsel eklenmemiş</strong><span>İlk tarlanı kaydettiğinde uydu sınırlarını ve analizlerini burada takip edebilirsin.</span><button class="primary" type="button" onclick="openFieldDialog()">＋ İlk parselini ekle</button></div>`;
 }
+$("fieldSearchInput").addEventListener("input",renderFields);
+$("fieldCropFilter").addEventListener("change",renderFields);
+let fieldDialogOpener=null;
+function openFieldDialog(fieldId="new"){
+ const dialog=$("fieldDialog"),selector=$("boundaryFieldSelect"),form=$("fieldForm"),isNew=String(fieldId)==="new";
+ fieldDialogOpener=document.activeElement;
+ dialog.hidden=false;document.body.classList.add("field-dialog-open");
+ if(isNew){form.reset();window.ekinvyaFieldMap?.clearDraft();$("fieldDialogTitle").textContent="Yeni parsel ekle"}
+ window.ekinvyaFieldMap?.init();window.ekinvyaFieldMap?.refreshSelect();
+ if(selector)selector.value=isNew?"new":String(fieldId);
+ window.ekinvyaFieldMap?.selectField(isNew?"new":String(fieldId));
+ $("fieldFormPanel").hidden=!isNew;
+ if(!isNew){const field=getFields().find(row=>String(row.id)===String(fieldId));$("fieldDialogTitle").textContent=field?`${field.name} · sınır düzenleme`:"Parsel sınırını düzenle";$("boundaryStatus").textContent=field?.geometry?`${field.name} sınırı açık. Düzenlemeler bulut kaydına aktarılır.`:`${field?.name||"Parsel"} için sınırı haritada çiz.`}
+ window.setTimeout(()=>{window.ekinvyaFieldMap?.resize();(isNew?$("fieldName"):$("closeFieldDialog")).focus()},90);
+}
+window.openFieldDialog=openFieldDialog;
+function closeFieldDialog(){
+ $("fieldDialog").hidden=true;document.body.classList.remove("field-dialog-open");
+ if(fieldDialogOpener?.isConnected)fieldDialogOpener.focus();fieldDialogOpener=null;
+}
+$("openFieldDialog").addEventListener("click",()=>openFieldDialog());
+$("closeFieldDialog").addEventListener("click",closeFieldDialog);
+$("fieldDialog").addEventListener("click",event=>{if(event.target===$("fieldDialog"))closeFieldDialog()});
+$("fieldDialog").querySelector(".field-dialog").addEventListener("keydown",event=>{
+ if(event.key==="Escape"){event.preventDefault();closeFieldDialog();return}
+ if(event.key!=="Tab")return;
+ const items=[...$("fieldDialog").querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled])')].filter(item=>!item.closest("[hidden]"));
+ if(!items.length)return;const first=items[0],last=items.at(-1);
+ if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}
+ else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}
+});
+$("boundaryFieldSelect").addEventListener("change",()=>{
+ const isNew=$("boundaryFieldSelect").value==="new";$("fieldFormPanel").hidden=!isNew;
+ const field=getFields().find(row=>String(row.id)===$("boundaryFieldSelect").value);
+ $("fieldDialogTitle").textContent=isNew?"Yeni parsel ekle":`${field?.name||"Parsel"} · sınır düzenleme`;
+});
+$("fieldForm").addEventListener("reset",()=>window.setTimeout(()=>window.ekinvyaFieldMap?.clearDraft(),0));
+$("fieldsList").addEventListener("click",event=>{
+ const button=event.target.closest("[data-field-action]");if(!button)return;
+ const id=button.dataset.fieldId,action=button.dataset.fieldAction;
+ if(action==="focus")focusField(id);else if(action==="draw")drawFieldBoundary(id);else if(action==="ndvi")showNdvi(id);else if(action==="npk")useFieldForNpk(id);else if(action==="delete")deleteField(id);
+});
+$("dashboardFields").addEventListener("click",event=>{const button=event.target.closest("[data-dashboard-field]");if(button)focusField(button.dataset.dashboardField)});
 $("fieldForm").addEventListener("submit",async e=>{
  e.preventDefault();
  const name=$("fieldName").value.trim(),area=num($("fieldArea").value);
@@ -120,14 +186,14 @@ $("fieldForm").addEventListener("submit",async e=>{
    if(!setFields(a))throw new Error("Tarla yerel kayda yazılamadı.");
    renderFields();renderSeason();
    await cloud.flush();
-   $("fieldForm").reset();window.ekinvyaFieldMap?.clearDraft();window.ekinvyaFieldMap?.refreshSelect();renderFields();renderSeason();toast(boundary?"Tarla ve GeoJSON sınırı Supabase hesabına kaydedildi.":"Tarla Supabase hesabına kaydedildi.");
+   $("fieldForm").reset();window.ekinvyaFieldMap?.clearDraft();window.ekinvyaFieldMap?.refreshSelect();renderFields();renderSeason();closeFieldDialog();toast(boundary?"Tarla ve GeoJSON sınırı Supabase hesabına kaydedildi.":"Tarla Supabase hesabına kaydedildi.");
  } catch(error) {
    setFields(previous);renderFields();toast(error.message||"Tarla buluta kaydedilemedi. Yeniden deneyin.");
  } finally { button.disabled=false;button.textContent="＋ Tarlayı kaydet"; }
 });
-function focusField(id){showView("fields");window.ekinvyaFieldMap?.selectField(String(id));document.getElementById("fieldBoundaryMap")?.scrollIntoView({behavior:"smooth",block:"center"})}
+function focusField(id){showView("fields");openFieldDialog(String(id))}
 window.focusField=focusField;
-function drawFieldBoundary(id){showView("fields");window.ekinvyaFieldMap?.selectField(String(id));$("boundaryStatus").textContent="Seçili tarlanın sınırını çiz veya düzenle; değişiklik otomatik kaydedilir."}
+function drawFieldBoundary(id){showView("fields");openFieldDialog(String(id));$("boundaryStatus").textContent="Seçili tarlanın sınırını çiz veya düzenle; değişiklik otomatik kaydedilir."}
 function setFieldGeometry(id,geometry,area){const rows=getFields(),field=rows.find(item=>String(item.id)===String(id));if(!field)return;field.geometry=geometry;if(geometry&&Number.isFinite(area)&&area>0)field.area=Number(area.toFixed(2));if(setFields(rows)){renderFields();renderSeason();toast("Tarla sınırı ve alanı bulut kaydına eklendi.")}}
 window.ekinvyaSetFieldGeometry=setFieldGeometry;
 function showNdvi(id){const field=getFields().find(item=>String(item.id)===String(id));if(!field?.geometry){toast("Önce tarlanın sınırını haritada çiz.");return}window.ekinvyaNdviFieldId=field.id;$("ndviFieldTitle").textContent=`${field.name} · ${fmt(field.area)} da · Sentinel‑2 L2A`;const localDate=d=>new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10),now=new Date(),to=localDate(now),fromDate=new Date(now);fromDate.setDate(fromDate.getDate()-90);const from=localDate(fromDate);$("ndviFrom").value=from;$("ndviTo").value=to;$("ndviResults").innerHTML="";$("ndviStatus").textContent=field.ndviHistory?.length?`Son analiz: ${new Date(field.ndviHistory[0].queriedAt).toLocaleString("tr-TR")}. Yeni tarih aralığı için analiz başlat.`:"Uydu analizi için bir tarih aralığı seçip başlat.";showView("ndvi")}

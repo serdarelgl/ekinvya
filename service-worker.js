@@ -1,4 +1,4 @@
-const CACHE_NAME = "ekinvya-shell-v7";
+const CACHE_NAME = "ekinvya-shell-v8";
 const APP_SHELL = [
   "./",
   "./index.html",
