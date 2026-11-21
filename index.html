@@ -12,6 +12,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Ekinvya | Akıllı Tarım Asistanı</title>
 <link rel="stylesheet" href="./styles.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" crossorigin="">
 </head>
 <body class="auth-pending">
 <div class="auth-loading" id="authLoading" role="status" aria-live="polite"><div><span class="auth-loading-mark" aria-hidden="true">✳</span><strong>Ekinvya</strong><p>Oturumun güvenle kontrol ediliyor…</p></div></div>
@@ -92,8 +94,14 @@
 </section>
   <section class="view" id="view-fields">
     <div class="heading"><div><div class="eyebrow">ARAZİ YÖNETİMİ</div><h1>Tarlalarım</h1><p>Eklediğin tarlalar burada ve genel bakışta görüntülenir.</p></div></div>
+    <section class="panel field-map-panel">
+      <div class="panelhead"><div><div class="eyebrow">SENTINEL‑2 · PARSEL SINIRI</div><h2>Tarlanın sınırını haritada çiz</h2><p>Poligonu çizip düzenleyebilirsin. Kaydederken alan dekara çevrilir; uydu NDVI analizi için parsel sınırı hesabına eklenir.</p></div><span class="tag">10 M UYDU VERİSİ</span></div>
+      <div class="field-map-tools"><div class="field"><label for="boundaryFieldSelect">Sınırı bağla</label><select id="boundaryFieldSelect"><option value="new">Yeni tarla formuna bağla</option></select></div><p id="boundaryStatus" role="status" aria-live="polite">Haritada poligon çiz veya kayıtlı parsel seç.</p></div>
+      <div id="fieldBoundaryMap" class="field-boundary-map" role="application" aria-label="Tarla sınırı çizim haritası"></div>
+      <p class="map-footnote">Harita altlığı OpenStreetMap’tir. Bitki indeksi ve uydu ölçümleri Sentinel‑2 L2A görüntülerinden alınır. Sentinel‑2 piksel çözünürlüğü 10 metredir.</p>
+    </section>
     <section class="panel">
-      <div class="panelhead"><div><h2>Yeni tarla ekle</h2><p>Parsel bilgilerini kaydet; genel bakıştaki liste ve toplam alan otomatik güncellensin.</p></div><span class="tag">HESAP KAYDI</span></div>
+      <div class="panelhead"><div><h2>Yeni tarla ekle</h2><p>Parsel bilgilerin ve çizdiğin sınır birlikte hesabına kaydedilir.</p></div><span class="tag">HESAP KAYDI</span></div>
       <form id="fieldForm">
         <div class="formgrid">
           <div class="field"><label for="fieldName">Tarla / parsel adı *</label><input id="fieldName" required maxlength="80" placeholder="Örn. Kırkgöz kuzey parseli"></div>
@@ -106,7 +114,15 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><button class="primary" type="submit">＋ Tarlayı kaydet</button><button class="secondary" type="reset">Formu temizle</button></div>
       </form>
     </section>
-    <section class="panel"><div class="panelhead"><div><h2>Kayıtlı tarlalar</h2><p>Silme işlemi genel bakıştaki liste ve alan toplamını da günceller.</p></div><span class="tag" id="fieldCountTag">0 TARLA</span></div><div id="fieldsList" class="quicklist"></div></section>
+    <section class="panel"><div class="panelhead"><div><h2>Kayıtlı tarlalar</h2><p>Çizilmiş sınırı olan parsellerde Sentinel‑2 NDVI zaman serisini açabilirsin.</p></div><span class="tag" id="fieldCountTag">0 TARLA</span></div><div id="fieldsList" class="quicklist"></div></section>
+  </section>
+  <section class="view" id="view-ndvi">
+    <div class="heading"><div><div class="eyebrow">COPERNICUS SENTINEL‑2 L2A</div><h1>Tarla NDVI analizi</h1><p id="ndviFieldTitle">Seçili parsel için bulutsuz NDVI gözlemleri.</p></div><button class="secondary" type="button" onclick="showView('fields')">← Parsellerime dön</button></div>
+    <section class="panel"><div class="panelhead"><div><h2>Analiz dönemi</h2><p>NDVI, yakın kızılötesi ve kırmızı bantlardan hesaplanır; bulut ve bulut gölgesi pikselleri elenir.</p></div><span class="tag">SENTINEL‑2 L2A</span></div>
+      <form id="ndviForm" class="ndvi-controls"><div class="field"><label for="ndviFrom">Başlangıç</label><input id="ndviFrom" type="date" required></div><div class="field"><label for="ndviTo">Bitiş</label><input id="ndviTo" type="date" required></div><button class="primary" type="submit" id="ndviRun">Uydu verisini getir</button></form>
+      <p id="ndviStatus" class="ndvi-status" role="status" aria-live="polite">Analiz için tarih aralığı seç.</p><div id="ndviResults" class="ndvi-results"></div>
+      <p class="map-footnote">NDVI, bitki örtüsünün spektral yansımasından türetilen bir göstergedir; tek başına verim veya hastalık teşhisi değildir. Bulutluluk ve uydu geçiş sıklığı nedeniyle bazı tarih aralıklarında geçerli gözlem çıkmayabilir.</p>
+    </section>
   </section>
   <section class="view" id="view-season">
     <div class="workflow-strip" aria-label="Tarla yönetimi akışı">
@@ -283,6 +299,9 @@
 <script src="./supabase-config.js" defer></script>
 <script src="./cloud-storage.js" defer></script>
 <script src="./app.js" defer></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer crossorigin=""></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js" defer crossorigin=""></script>
+<script src="./field-map.js" defer></script>
 <script src="./auth.js" defer></script>
 </body>
 </html>

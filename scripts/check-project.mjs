@@ -10,6 +10,8 @@ const requiredFiles = [
   "aydinlatma.html",
   "styles.css",
   "app.js",
+  "field-map.js",
+  "api/ndvi.js",
   "auth.js",
   "supabase-config.js",
   "cloud-storage.js",
@@ -30,7 +32,7 @@ const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
 const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
 if (duplicates.length) throw new Error(`Yinelenen HTML kimlikleri: ${[...new Set(duplicates)].join(", ")}`);
 
-for (const reference of ["./styles.css", "./app.js", "./auth.js", "./supabase-config.js", "./cloud-storage.js", "./vendor/supabase.min.js", "./manifest.webmanifest", "./favicon.svg"]) {
+for (const reference of ["./styles.css", "./app.js", "./field-map.js", "./auth.js", "./supabase-config.js", "./cloud-storage.js", "./vendor/supabase.min.js", "./manifest.webmanifest", "./favicon.svg"]) {
   if (!html.includes(reference)) throw new Error(`index.html içinde dosya bağlantısı eksik: ${reference}`);
 }
 if (/<style(?:\s|>)/i.test(html) || /<script>([\s\S]*?)<\/script>/i.test(html)) {
@@ -39,7 +41,7 @@ if (/<style(?:\s|>)/i.test(html) || /<script>([\s\S]*?)<\/script>/i.test(html)) 
 
 const syntax = spawnSync(process.execPath, ["--check", resolve(root, "app.js")], { encoding: "utf8" });
 if (syntax.status !== 0) throw new Error(syntax.stderr || "app.js sözdizimi kontrolü başarısız.");
-for (const file of ["auth.js", "supabase-config.js", "cloud-storage.js", "service-worker.js", "scripts/serve.mjs", "scripts/check-project.mjs"]) {
+for (const file of ["auth.js", "supabase-config.js", "cloud-storage.js", "field-map.js", "api/ndvi.js", "service-worker.js", "scripts/serve.mjs", "scripts/check-project.mjs"]) {
   const result = spawnSync(process.execPath, ["--check", resolve(root, file)], { encoding: "utf8" });
   if (result.status !== 0) throw new Error(result.stderr || `${file} sözdizimi kontrolü başarısız.`);
 }
@@ -52,5 +54,11 @@ for (const id of ["authConfigNotice", "authForm", "authRecoveryForm", "authAccou
 }
 if (!html.includes('id="authNoticeAck"') || !html.includes('href="./aydinlatma.html"')) {
   throw new Error("Üyelikte aydınlatma metni bağlantısı veya bilgilendirme alanı eksik.");
+}
+for (const id of ["fieldBoundaryMap", "boundaryFieldSelect", "ndviForm", "ndviResults"]) {
+  if (!ids.includes(id)) throw new Error(`Sentinel‑2 parsel arayüzü eksik: ${id}`);
+}
+if (!html.includes('src="./field-map.js"') || !html.includes('id="view-ndvi"')) {
+  throw new Error("Harita çizimi veya Sentinel‑2 NDVI ekranı uygulamaya bağlanmamış.");
 }
 console.log(`Ekinvya proje kontrolü başarılı (${requiredFiles.length} ana dosya, ${ids.length} HTML kimliği).`);

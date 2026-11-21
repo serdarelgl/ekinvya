@@ -1,6 +1,6 @@
 # Ekinvya
 
-Ekinvya; parsel kayıtları, tarımsal hesaplar ve konuma dayalı hava tahminlerini tek ekranda sunan, mobil uyumlu statik web uygulamasıdır.
+Ekinvya; parsel kayıtları, Sentinel‑2 tarla analizleri, tarımsal hesaplar ve konuma dayalı hava tahminlerini tek ekranda sunan mobil web uygulamasıdır.
 
 ## Proje yapısı
 
@@ -8,6 +8,8 @@ Ekinvya; parsel kayıtları, tarımsal hesaplar ve konuma dayalı hava tahminler
 - `aydinlatma.html` — üyelik sırasında bağlantı verilen KVKK aydınlatma metni taslağı
 - `styles.css` — masaüstü ve mobil arayüz stilleri
 - `app.js` — arayüz, bulut kayıtları, GPS, Open-Meteo ve Windy bağlantıları
+- `field-map.js` — haritada parsel sınırı çizimi ve alan hesabı
+- `api/ndvi.js` — kullanıcı oturumunu doğrulayıp Copernicus Sentinel Hub’dan Sentinel‑2 L2A NDVI istatistiklerini alan Vercel Function
 - `auth.js` ve `supabase-config.js` — e-posta üyeliği, giriş, doğrulama, şifre sıfırlama ve oturum yönetimi
 - `cloud-storage.js` — parsel, maliyet, sezon ve hesap kayıtlarını kullanıcı hesabına göre Supabase ile eşitler
 - `supabase/migrations/202611200001_ekinvya_user_data.sql` — kişisel bulut tablosu ve kullanıcı başına satır güvenliği (RLS)
@@ -52,10 +54,25 @@ Hesaplar Supabase Auth tarafından; uygulama kayıtları ise tek bir JSONB satı
 
 Kaynak depo `serdarelgl/ekinvya`, üretim dalı `main`'dir. Depo Vercel projesine bağlıysa `main` dalına gönderilen commit otomatik üretim dağıtımı başlatır. Uygulama kökteki `index.html` üzerinden statik olarak sunulur; özel build komutu gerekmez. `ekinvya_v4_Tarla_Sezon_Islem_Karlilik.html` yerel yedektir ve `.gitignore` ile dışarıda bırakılır.
 
+## Sentinel‑2 parsel ve NDVI
+
+Parsellerim ekranında Leaflet haritası üzerinde poligon çizilebilir ve sınır GeoJSON olarak parsel kaydına eklenir. Çizimden hesaplanan yaklaşık alan dekara çevrilir. Mevcut tarla sınırları da düzenlenebilir. Harita altlığı OpenStreetMap’tir; analiz verisi ise Copernicus Data Space üzerinden Sentinel‑2 L2A’dır. Mapbox veya Mapbox tokenı gerekmez.
+
+NDVI analizi, seçilen parsel geometrisi ve tarih aralığı için Sentinel Hub Statistical API’ye gönderilir. Kırmızı B04 ve yakın kızılötesi B08 bantlarından `(B08 - B04) / (B08 + B04)` hesaplanır; SCL sınıflandırmasındaki bulut, gölge, sirüs, kar ve geçersiz pikseller dışarıda bırakılır. Sonuçlar 10 günlük dönem ortalaması, minimum/maksimum ve geçerli piksel sayısı olarak gösterilir. Bulut ve uydu geçiş sıklığı nedeniyle her dönemde gözlem olmayabilir. NDVI tek başına verim veya hastalık teşhisi değildir.
+
+Canlı NDVI sorgularını etkinleştirmek için:
+
+1. [Copernicus Data Space](https://dataspace.copernicus.eu/) hesabında Dashboard → User Settings → OAuth clients bölümünden bir OAuth client oluştur. Client ID ve secret değerlerini güvenli bir yerde sakla.
+2. Vercel → Ekinvya projesi → Settings → Environment Variables bölümünde şu değişkenleri Production (ve istersen Preview) için tanımla: `COPERNICUS_CLIENT_ID`, `COPERNICUS_CLIENT_SECRET`, `EKINVYA_SUPABASE_URL`, `EKINVYA_SUPABASE_PUBLISHABLE_KEY`. Son iki değer, `supabase-config.js` içindeki URL ve publishable key ile aynıdır. Secret değerlerini GitHub’a veya tarayıcı koduna ekleme.
+3. Vercel’de yeni deployment başlat. API yalnızca geçerli Supabase oturumuyla çağrılır; parsel geometrisi ve NDVI sorgu geçmişi hesabın kullanıcı verisi satırında saklanır.
+
+Bu OAuth istemcisi henüz Vercel ortam değişkenlerinde tanımlı değilse NDVI düğmesi doğru biçimde yapılandırma mesajı verir; canlı uydu analizi credential kurulana kadar çalışmaz.
+
 ## Veri, konum ve servis sınırları
 
 - Parsel, NPK kayıtları, fiyatlar, maliyetler, senaryolar, sezon ve operasyon kayıtları giriş yapan kullanıcının Supabase satırında saklanır; tarayıcı çevrimdışı/ilk yükleme için yerel önbellek kullanır. RLS, farklı hesapların satırlarını ayırır. Bulut eşitlemesi için yukarıdaki SQL migration'ın Supabase projesine uygulanması ve uygulamanın yeni sürümünün dağıtılması gerekir.
 - GPS yalnızca kullanıcı konum düğmesine bastığında istenir. Koordinatlar Open-Meteo hava tahmini isteğine ve Windy haritası bağlantısına gönderilir.
+- Parsel sınırı ve Sentinel‑2 NDVI sorgu geçmişi, diğer tarla alanlarıyla birlikte Supabase kullanıcı satırında saklanır. Sentinel Hub OAuth secret anahtarı yalnızca Vercel sunucu ortamında bulunur.
 - Ana sayfa ve ayrıntılı sayısal rapor Open-Meteo verisini kullanır. Open-Meteo ücretsiz API'si ticari olmayan kullanım içindir; ürün ticari amaçla sunulacaksa uygun lisans/API planı gerekir. Veriler CC BY 4.0 atfı ile gösterilir.
 - Windy gömülü haritası kendi katman ve zaman kontrollerini sağlar. Windy Point Forecast sayısal API'si bu projede yapılandırılmadı; makinece okunabilir Windy tahmini için ayrı API erişimi ve sunucu tarafında anahtar yönetimi gerekir. Gizli anahtarları `app.js` içine koyma.
 - Service worker yalnızca uygulamanın aynı kaynaktaki dosyalarını önbelleğe alır. Hava verileri ve Windy haritası internet bağlantısı gerektirir.
