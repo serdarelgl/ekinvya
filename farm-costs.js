@@ -80,8 +80,8 @@
       $("farmCostYield").value = Math.round(seasonal.reduce((sum, data) => sum + amount(data.yieldKgDa), 0) / seasonal.length);
       $("farmCostPrice").value = (seasonal.reduce((sum, data) => sum + amount(data.pricePerKg), 0) / seasonal.length).toFixed(2);
     } else {
-      $("farmCostYield").value = "450";
-      $("farmCostPrice").value = "0";
+      $("farmCostYield").value = "";
+      $("farmCostPrice").value = "";
     }
     render();
   }
@@ -107,10 +107,9 @@
     const scope = $("farmCostFormField").value, fields = getFields().filter(field => scope === "ALL" || String(field.id) === scope);
     const raw = amount($("farmCostFormAmount").value), unitMode = $("farmCostEntryMode").value === "unit";
     const area = fields.reduce((sum, field) => sum + amount(field.area), 0);
-    const label = $("farmCostFormAmountLabel");
-    label.textContent = unitMode ? "Dekar başına tutar (₺/da) *" : "Toplam tutar (₺) *";
-    $("farmCostFormAmount").placeholder = unitMode ? "Örn. 850" : "Örn. 12500";
     const total = unitMode ? raw * area : raw;
+    $("farmCostTotalInput").value = raw > 0 && unitMode ? total.toFixed(2) : raw > 0 ? raw.toFixed(2) : "";
+    $("farmCostUnitInput").value = raw > 0 && area ? (unitMode ? raw : total / area).toFixed(2) : "";
     const preview = $("farmCostAmountPreview");
     if (!raw || !area) preview.textContent = scope === "ALL" ? "Parsellerin kayıtlı alanına göre paylaştırılır; kayıtlar her parsele ayrı gider olarak eklenir." : "Tutar girdiğinde parsel alanına göre toplam hesaplanır.";
     else preview.textContent = unitMode
@@ -181,8 +180,16 @@
     } finally { saveButton.disabled = false; saveButton.textContent = "＋ Gideri kaydet"; }
   });
   $("farmCostFormField").addEventListener("change", updateAmountPreview);
-  $("farmCostEntryMode").addEventListener("change", updateAmountPreview);
-  $("farmCostFormAmount").addEventListener("input", updateAmountPreview);
+  $("farmCostTotalInput").addEventListener("input", () => {
+    $("farmCostEntryMode").value = "total";
+    $("farmCostFormAmount").value = $("farmCostTotalInput").value;
+    updateAmountPreview();
+  });
+  $("farmCostUnitInput").addEventListener("input", () => {
+    $("farmCostEntryMode").value = "unit";
+    $("farmCostFormAmount").value = $("farmCostUnitInput").value;
+    updateAmountPreview();
+  });
   $("farmCostExport").addEventListener("click", () => {
     const fields = getFields(), fieldFilter = $("farmCostFieldFilter").value, yearFilter = $("farmCostYear").value, catFilter = $("farmCostCategoryFilter").value;
     const names = new Map(fields.map(field => [String(field.id), field]));
