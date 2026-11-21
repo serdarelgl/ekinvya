@@ -96,9 +96,14 @@
     <div class="heading"><div><div class="eyebrow">ARAZİ YÖNETİMİ</div><h1>Tarlalarım</h1><p>Eklediğin tarlalar burada ve genel bakışta görüntülenir.</p></div></div>
     <section class="panel field-map-panel">
       <div class="panelhead"><div><div class="eyebrow">SENTINEL‑2 · PARSEL SINIRI</div><h2>Tarlanın sınırını haritada çiz</h2><p>Poligonu çizip düzenleyebilirsin. Kaydederken alan dekara çevrilir; uydu NDVI analizi için parsel sınırı hesabına eklenir.</p></div><span class="tag">10 M UYDU VERİSİ</span></div>
-      <div class="field-map-tools"><div class="field"><label for="boundaryFieldSelect">Sınırı bağla</label><select id="boundaryFieldSelect"><option value="new">Yeni tarla formuna bağla</option></select></div><p id="boundaryStatus" role="status" aria-live="polite">Haritada poligon çiz veya kayıtlı parsel seç.</p></div>
+      <div class="field-map-tools">
+        <div class="field"><label for="boundaryFieldSelect">Sınırı bağla</label><select id="boundaryFieldSelect"><option value="new">Yeni tarla formuna bağla</option></select></div>
+        <form id="mapPlaceSearch" class="map-place-search" role="search"><label class="sr-only" for="mapPlaceQuery">Mahalle veya köy ara</label><input id="mapPlaceQuery" type="search" maxlength="120" placeholder="Mahalle / köy ara" autocomplete="off"><button class="secondary" type="submit">Haritada bul</button></form>
+        <button class="secondary map-locate" id="mapLocate" type="button">◎ Konumuma Git</button>
+        <p id="boundaryStatus" role="status" aria-live="polite">Haritada poligon çiz veya kayıtlı parsel seç.</p>
+      </div>
       <div id="fieldBoundaryMap" class="field-boundary-map" role="application" aria-label="Tarla sınırı çizim haritası"></div>
-      <p class="map-footnote">Harita altlığı OpenStreetMap’tir. Bitki indeksi ve uydu ölçümleri Sentinel‑2 L2A görüntülerinden alınır. Sentinel‑2 piksel çözünürlüğü 10 metredir.</p>
+      <p class="map-footnote">Varsayılan uydu görüntüsü Esri World Imagery’dir; katman menüsünden OpenStreetMap’e geçebilirsin. Yer araması © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap katkıcıları</a>. Bitki indeksi ve uydu ölçümleri Sentinel‑2 L2A görüntülerinden alınır. Sentinel‑2 piksel çözünürlüğü 10 metredir.</p>
     </section>
     <section class="panel">
       <div class="panelhead"><div><h2>Yeni tarla ekle</h2><p>Parsel bilgilerin ve çizdiğin sınır birlikte hesabına kaydedilir.</p></div><span class="tag">HESAP KAYDI</span></div>
@@ -111,7 +116,7 @@
           <div class="field"><label for="fieldSeason">Üretim sezonu</label><select id="fieldSeason"><option>2026/2027</option><option>2027</option><option>2025/2026</option></select></div>
           <div class="field"><label for="fieldNotes">Not</label><input id="fieldNotes" maxlength="250" placeholder="Toprak, kira, gözlem vb."></div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><button class="primary" type="submit">＋ Tarlayı kaydet</button><button class="secondary" type="reset">Formu temizle</button></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><button class="primary" id="saveFieldButton" type="submit">＋ Tarlayı kaydet</button><button class="secondary" type="reset">Formu temizle</button></div>
       </form>
     </section>
     <section class="panel"><div class="panelhead"><div><h2>Kayıtlı tarlalar</h2><p>Çizilmiş sınırı olan parsellerde Sentinel‑2 NDVI zaman serisini açabilirsin.</p></div><span class="tag" id="fieldCountTag">0 TARLA</span></div><div id="fieldsList" class="quicklist"></div></section>
