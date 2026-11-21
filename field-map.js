@@ -102,7 +102,56 @@
       polygons.push([coordinateRing(coordinateNodes[0])]);
     }
     const value = polygons.length === 1 ? { type: "Polygon", coordinates: polygons[0] } : { type: "MultiPolygon", coordinates: polygons };
-    return normalizeGeometry(value);
+    const geometry = normalizeGeometry(value);
+    const metadata = {};
+    const pairs = [];
+    local(xml, "SimpleData").concat(local(xml, "Data")).forEach(node => {
+      const key = node.getAttribute("name"), valueNode = local(node, "value")[0];
+      const value = (valueNode?.textContent || node.textContent || "").trim();
+      if (key && value) pairs.push([key, value]);
+    });
+    const description = local(xml, "description")[0]?.textContent || "";
+    if (description) {
+      const html = new DOMParser().parseFromString(description, "text/html");
+      html.querySelectorAll("tr").forEach(row => {
+        const cells = [...row.querySelectorAll("th,td")].map(cell => cell.textContent.trim());
+        if (cells.length > 1 && cells[0] && cells[1]) pairs.push([cells[0], cells.slice(1).join(" ")]);
+      });
+    }
+    local(xml, "name").slice(0, 1).forEach(node => { if (node.textContent.trim()) metadata.name = node.textContent.trim(); });
+    const normalizedKey = key => key.toLocaleLowerCase("tr-TR").replace(/[\s_./-]/g, "");
+    const find = (...keys) => pairs.find(([key, value]) => keys.includes(normalizedKey(key)) && value)?.[1] || "";
+    metadata.ada = find("ada", "adano");
+    metadata.parsel = find("parsel", "parselno", "parselnumarasi");
+    metadata.location = [find("mahalle", "mahallead", "mahallekoy", "koy"), find("ilce", "ilcead")].filter(Boolean).join(" / ");
+    metadata.place = find("mevkii", "mevki");
+    metadata.titleAreaSqM = parseTurkishAreaSqM(find("alan", "parselalani", "yuzolcumu", "alanim2"));
+    metadata.notes = [find("nitelik", "aciklama"), metadata.titleAreaSqM ? `TKGM KML alanı: ${metadata.titleAreaSqM.toLocaleString("tr-TR")} m²` : ""].filter(Boolean).join(" · ");
+    return { geometry, metadata };
+  }
+
+  function parseTurkishAreaSqM(value) {
+    if (!value) return 0;
+    const text = String(value).replace(/\s/g, "").replace(/m²|m2|metrekare/gi, "");
+    const number = Number(text.includes(",") ? text.replace(/\./g, "").replace(",", ".") : text);
+    return Number.isFinite(number) && number > 0 ? number : 0;
+  }
+
+  function applyImportMetadata(metadata, geometryArea) {
+    if (!metadata) return;
+    const $set = (id, value) => { const node = $(id); if (node && value && !node.value.trim()) node.value = value; };
+    $set("fieldAda", metadata.ada);
+    $set("fieldParsel", metadata.parsel);
+    $set("fieldLocation", metadata.location);
+    $set("fieldName", metadata.place || metadata.name || [metadata.location, metadata.ada && `Ada ${metadata.ada}`, metadata.parsel && `Parsel ${metadata.parsel}`].filter(Boolean).join(" · "));
+    $set("fieldNotes", metadata.notes);
+    if (metadata.titleAreaSqM) {
+      const titleDa = metadata.titleAreaSqM / 1000;
+      const variance = Math.abs(titleDa - geometryArea), pct = titleDa ? variance / titleDa * 100 : 0;
+      const summary = $("boundaryImportSummary");
+      if (summary) summary.textContent = `KML kadastro alanı ${titleDa.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} da · harita geometrisi ${geometryArea.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} da · fark ${pct.toLocaleString("tr-TR", { maximumFractionDigits: 1 })}%. Alan otomatik olarak geometri ölçüsüne yazıldı; resmi kayıt için TKGM verisini kontrol et.`;
+      if (!$("fieldNotes").value.trim()) $("fieldNotes").value = `TKGM alanı ${titleDa.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} da; geometri alanı ${geometryArea.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} da.`;
+    }
   }
 
   function currentGeometry() {
@@ -204,11 +253,16 @@
     clearPreview();
     showModePanel(mode);
     setText("boundaryCrosshairCount", "0 nokta");
+    if (mode !== "import") setText("boundaryImportSummary", "Alan, haritada çizilen sınırdan yaklaşık hesaplanır. Kadastro alanı farklı olabilir; resmi kayıt için TKGM verisini esas al.");
     if (mode === "draw") status.textContent = "Harita araç çubuğundan çokgen çiz veya mevcut sınırı düzenle.";
     if (mode === "import") status.textContent = "KML ya da GeoJSON dosyası seçerek parsel sınırını yükle.";
     if (mode === "crosshair") status.textContent = "Haritayı her köşeye taşı; ortadaki hedefi sırayla noktaya getir.";
     if (mode === "box") status.textContent = "Haritada dikdörtgenin karşılıklı iki köşesine dokun.";
     if (mode === "gpswalk") status.textContent = "GPS çevre kaydını başlatmak için düğmeye bas.";
+  }
+
+  function setDefaultMode(isNew = true) {
+    if (isNew) setMode(window.matchMedia?.("(max-width: 767px), (pointer: coarse)").matches ? "crosshair" : "draw");
   }
 
   function previewCrosshair() {
@@ -270,19 +324,32 @@
 
     selector.addEventListener("change", () => selectField(selector.value));
     document.querySelectorAll("[data-boundary-mode]").forEach(button => button.addEventListener("click", () => setMode(button.dataset.boundaryMode)));
-    setMode("draw");
+    setDefaultMode();
 
     $("boundaryFileInput").addEventListener("change", async event => {
       const file = event.target.files?.[0];
       if (!file) return;
       if (file.size > 10 * 1024 * 1024) { status.textContent = "Dosya en fazla 10 MB olabilir."; event.target.value = ""; return; }
       status.textContent = `${file.name} okunuyor…`;
+      setText("boundaryImportSummary", "Dosya içindeki varsa kadastro alanı, yüklenen sınırın hesaplanan alanıyla karşılaştırılacak.");
       try {
         const text = await file.text();
-        const geometry = /\.kml$/i.test(file.name) || /<kml[\s>]/i.test(text) ? parseKml(text) : normalizeGeometry(getFeatureGeometry(JSON.parse(text)));
+        let geometry, metadata = null;
+        if (/\.kml$/i.test(file.name) || /<kml[\s>]/i.test(text)) ({ geometry, metadata } = parseKml(text));
+        else {
+          const parsed = JSON.parse(text);
+          geometry = normalizeGeometry(getFeatureGeometry(parsed));
+          const properties = parsed?.type === "Feature" ? parsed.properties : parsed?.features?.[0]?.properties;
+          if (properties && typeof properties === "object") {
+            const values = Object.fromEntries(Object.entries(properties).map(([key, value]) => [key.toLocaleLowerCase("tr-TR").replace(/[\s_./-]/g, ""), String(value ?? "").trim()]));
+            const get = (...keys) => keys.map(key => values[key]).find(Boolean) || "";
+            metadata = { name: get("name", "ad", "parseladi"), ada: get("ada", "adano"), parsel: get("parsel", "parselno"), location: get("mahalle", "mahallead", "koy") };
+          }
+        }
         const area = geometryAreaDecares(geometry);
         if (!area) throw new Error("Dosyadan geçerli alan hesaplanamadı.");
         applyGeometry(geometry, `${file.name} sınırı yüklendi · yaklaşık ${area.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} da. Formu kaydetmeyi unutma.`);
+        applyImportMetadata(metadata, area);
       } catch (error) {
         status.textContent = error.message || "Dosya okunamadı. KML veya Polygon GeoJSON kullan.";
       } finally { event.target.value = ""; }
@@ -384,6 +451,7 @@
     resize() { if (map) window.setTimeout(() => map.invalidateSize(), 80); },
     refreshSelect,
     selectField,
+    setDefaultMode,
     stopCapture() { if (gpsWatchId !== null) stopGpsWalk(false); },
     getDraftGeometry: () => draftGeometry,
     clearDraft() {
@@ -391,7 +459,7 @@
       draftGeometry = null; selectedId = "new"; crosshairPoints = []; boxFirstCorner = null;
       if (selector) selector.value = "new";
       if (map) renderGeometry(null);
-      setMode("draw");
+      setDefaultMode();
     }
   };
 })();

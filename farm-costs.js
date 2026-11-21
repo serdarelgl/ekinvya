@@ -12,7 +12,7 @@
     select.innerHTML = '<option value="ALL">Tüm parseller</option>' + fields.map(field => `<option value="${safe(field.id)}">${safe(fieldTitle(field))}</option>`).join("");
     select.value = fields.some(field => String(field.id) === prior) ? prior : "ALL";
     const formField = $("farmCostFormField"), formPrior = formField.value;
-    formField.innerHTML = fields.map(field => `<option value="${safe(field.id)}">${safe(fieldTitle(field))} · ${safe(field.area)} da</option>`).join("");
+    formField.innerHTML = '<option value="ALL">Tüm parsellere alanına göre dağıt</option>' + fields.map(field => `<option value="${safe(field.id)}">${safe(fieldTitle(field))} · ${safe(field.area)} da</option>`).join("");
     if (fields.some(field => String(field.id) === formPrior)) formField.value = formPrior;
     const years = [...new Set(costs.map(cost => String(cost.date || "").slice(0, 4)).filter(year => /^\d{4}$/.test(year)))].sort().reverse();
     const yearSelect = $("farmCostYear"), prevYear = yearSelect.value;
@@ -51,8 +51,8 @@
     $("farmGrossNote").textContent = hasRevenueInputs ? `${fmt(yieldKgDa)} kg/da × ${fmt(pricePerKg)} ₺/kg · ${fmt(area)} da` : "Verim ve fiyat varsayımı gir";
     $("farmNetLabel").textContent = hasRevenueInputs ? (net < 0 ? "TAHMİNİ NET ZARAR" : "TAHMİNİ NET KÂR") : "TAHMİNİ NET SONUÇ";
     $("farmNetResult").textContent = hasRevenueInputs ? `${fmt(net)} ₺` : "—";
-    const breakEvenPrice = area && yieldKgDa ? total / (area * yieldKgDa) : 0;
-    $("farmBreakEven").textContent = hasRevenueInputs ? `Başabaş fiyatı yaklaşık ${fmt(breakEvenPrice)} ₺/kg` : "Gelir varsayımlarını girerek başabaş fiyatını gör";
+    const breakEvenYield = area && pricePerKg ? (total / area) / pricePerKg : 0;
+    $("farmBreakEven").textContent = area && pricePerKg ? `Başabaş verimi yaklaşık ${fmt(breakEvenYield)} kg/da` : "Başabaş verimi için satış fiyatı gir";
 
     const byCategory = new Map();
     scopedCosts.forEach(cost => byCategory.set(cost.cat || "Diğer", (byCategory.get(cost.cat || "Diğer") || 0) + amount(cost.amount)));
@@ -67,8 +67,9 @@
     $("farmCostRows").innerHTML = displayed.length ? displayed.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).map(cost => {
       const field = fields.find(row => String(row.id) === String(cost.fieldId));
       const confirmed = pendingDelete === cost.id;
-      return `<tr><td>${safe(cost.date ? new Date(`${cost.date}T12:00:00`).toLocaleDateString("tr-TR") : "—")}</td><td>${safe(field?.name || "Parsel silinmiş")}</td><td><span class="pill">${safe(cost.cat || "Diğer")}</span></td><td class="farm-cost-description-cell">${safe(cost.desc || "—")}</td><td><strong>${fmt(amount(cost.amount))} ₺</strong></td><td><button class="farm-cost-delete" type="button" data-cost-delete="${safe(cost.id)}" aria-label="${safe(field?.name || "Parsel")} gider kaydını sil">${confirmed ? "Tekrar bas: sil" : "Sil"}</button></td></tr>`;
-    }).join("") : '<tr><td colspan="6" class="emptyhint">Henüz gider kaydı yok. “Yeni gider ekle” düğmesiyle başlayabilirsin.</td></tr>';
+      const perDaCost = field?.area ? amount(cost.amount) / amount(field.area) : 0;
+      return `<tr><td>${safe(cost.date ? new Date(`${cost.date}T12:00:00`).toLocaleDateString("tr-TR") : "—")}</td><td>${safe(field?.name || "Parsel silinmiş")}</td><td><span class="pill">${safe(cost.cat || "Diğer")}</span></td><td class="farm-cost-description-cell">${safe(cost.desc || "—")}</td><td>${field?.area ? `${fmt(perDaCost)} ₺` : "—"}</td><td><strong>${fmt(amount(cost.amount))} ₺</strong></td><td><button class="farm-cost-delete" type="button" data-cost-delete="${safe(cost.id)}" aria-label="${safe(field?.name || "Parsel")} gider kaydını sil">${confirmed ? "Tekrar bas: sil" : "Sil"}</button></td></tr>`;
+    }).join("") : '<tr><td colspan="7" class="emptyhint">Henüz gider kaydı yok. “Yeni gider ekle” düğmesiyle başlayabilirsin.</td></tr>';
   }
 
   function setRevenueDefaults() {
@@ -95,9 +96,26 @@
     document.body.classList.add("field-dialog-open");
     $("farmCostForm").reset();
     $("farmCostFormDate").value = todayStr();
+    $("farmCostFormField").value = "ALL";
     if (fieldId && fields.some(field => String(field.id) === String(fieldId))) $("farmCostFormField").value = String(fieldId);
     else if ($("farmCostFieldFilter").value !== "ALL") $("farmCostFormField").value = $("farmCostFieldFilter").value;
     $("farmCostFormField").focus();
+    updateAmountPreview();
+  }
+
+  function updateAmountPreview() {
+    const scope = $("farmCostFormField").value, fields = getFields().filter(field => scope === "ALL" || String(field.id) === scope);
+    const raw = amount($("farmCostFormAmount").value), unitMode = $("farmCostEntryMode").value === "unit";
+    const area = fields.reduce((sum, field) => sum + amount(field.area), 0);
+    const label = $("farmCostFormAmountLabel");
+    label.textContent = unitMode ? "Dekar başına tutar (₺/da) *" : "Toplam tutar (₺) *";
+    $("farmCostFormAmount").placeholder = unitMode ? "Örn. 850" : "Örn. 12500";
+    const total = unitMode ? raw * area : raw;
+    const preview = $("farmCostAmountPreview");
+    if (!raw || !area) preview.textContent = scope === "ALL" ? "Parsellerin kayıtlı alanına göre paylaştırılır; kayıtlar her parsele ayrı gider olarak eklenir." : "Tutar girdiğinde parsel alanına göre toplam hesaplanır.";
+    else preview.textContent = unitMode
+      ? `${fmt(raw)} ₺/da × ${fmt(area)} da = ${fmt(total)} ₺ toplam${fields.length > 1 ? ` · ${fields.length} parsele alan payına göre dağıtılır` : ""}.`
+      : `${fmt(total)} ₺ toplam${fields.length > 1 ? ` · ${fields.length} parsele alan payına göre dağıtılır` : ""}${area ? ` · ortalama ${fmt(total / area)} ₺/da` : ""}.`;
   }
 
   function closeDialog() {
@@ -123,19 +141,64 @@
     if (event.shiftKey && document.activeElement === items[0]) { event.preventDefault(); items.at(-1).focus(); }
     else if (!event.shiftKey && document.activeElement === items.at(-1)) { event.preventDefault(); items[0].focus(); }
   });
-  $("farmCostForm").addEventListener("submit", event => {
+  $("farmCostForm").addEventListener("submit", async event => {
     event.preventDefault();
-    const fieldId = $("farmCostFormField").value, date = $("farmCostFormDate").value, amountTry = amount($("farmCostFormAmount").value);
-    if (!fieldId || !date || !(amountTry > 0)) { toast("Parsel, tarih ve geçerli tutar gerekli."); return; }
-    const costs = getCosts();
-    costs.push({id:Date.now(), fieldId:Number(fieldId), date, cat:$("farmCostFormCategory").value, desc:$("farmCostFormDescription").value.trim(), amount:amountTry});
-    if (setCosts(costs)) {
+    const scope = $("farmCostFormField").value, date = $("farmCostFormDate").value, entered = amount($("farmCostFormAmount").value);
+    const selectedFields = getFields().filter(field => scope === "ALL" || String(field.id) === scope);
+    const fields = selectedFields.filter(field => Number.isFinite(amount(field.area)) && amount(field.area) > 0), area = fields.reduce((sum, field) => sum + amount(field.area), 0);
+    if (!fields.length || !date || !Number.isFinite(entered) || !(entered > 0) || !Number.isFinite(area) || !(area > 0) || selectedFields.length !== fields.length) { toast("Parsel alanı, tarih ve geçerli tutar gerekli. Alanı sıfır olan parseller toplu dağıtıma katılamaz."); return; }
+    const previous = getCosts(), costs = previous.slice();
+    const unitMode = $("farmCostEntryMode").value === "unit";
+    const rawTotal = unitMode ? entered * area : entered;
+    if (!Number.isFinite(rawTotal) || !Number.isFinite(Math.round(rawTotal * 100))) { toast("Toplam gider tutarı geçerli sayı sınırını aşıyor."); return; }
+    const totalCents = Math.round(rawTotal * 100);
+    const baseId = Date.now(), desc = $("farmCostFormDescription").value.trim(), allocations = fields.map(field => {
+      const exact = totalCents * amount(field.area) / area;
+      return { field, cents:Math.floor(exact), remainder:exact - Math.floor(exact) };
+    });
+    let centsLeft = totalCents - allocations.reduce((sum, row) => sum + row.cents, 0);
+    allocations.slice().sort((a, b) => b.remainder - a.remainder).slice(0, centsLeft).forEach(row => { row.cents += 1; });
+    allocations.forEach(({field, cents}) => {
+      const totalAmount = cents / 100, unitAmount = unitMode ? entered : totalAmount / amount(field.area);
+      costs.push({ id: baseId + costs.length, fieldId: Number(field.id), date, cat:$("farmCostFormCategory").value, desc:fields.length > 1 ? `${desc || "Toplu gider"} · alan payı` : desc, amount:totalAmount, unitAmount:Number(unitAmount.toFixed(6)) });
+    });
+    const saveButton = $("saveFarmCostButton"); saveButton.disabled = true; saveButton.textContent = "Buluta kaydediliyor…";
+    try {
+      const cloud = window.ekinvyaCloud, client = window.ekinvyaSupabaseClient;
+      if (!cloud || !client) throw new Error("Bulut bağlantısı bulunamadı. Yeniden giriş yapıp tekrar dene.");
+      const { data: { user }, error } = await client.auth.getUser();
+      if (error || !user || !cloud.isReadyFor(user.id)) throw new Error("Hesap verileri bulutla eşitleniyor. Birkaç saniye sonra tekrar dene.");
+      if (!setCosts(costs)) throw new Error("Gider yerel kayda yazılamadı.");
+      await cloud.flush();
       render();
       closeDialog();
       if (typeof renderSeason === "function") renderSeason();
       if (typeof renderFields === "function") renderFields();
-      toast("Gider kaydedildi ve bulut eşitlemesine alındı.");
-    }
+      toast(fields.length > 1 ? `Gider ${fields.length} parsele alanına göre paylaştırıldı ve bulut eşitlemesine alındı.` : "Gider kaydedildi ve bulut eşitlemesine alındı.");
+    } catch (error) {
+      setCosts(previous); render();
+      toast(error.message || "Gider buluta kaydedilemedi. Formdaki bilgiler korunuyor.");
+    } finally { saveButton.disabled = false; saveButton.textContent = "＋ Gideri kaydet"; }
+  });
+  $("farmCostFormField").addEventListener("change", updateAmountPreview);
+  $("farmCostEntryMode").addEventListener("change", updateAmountPreview);
+  $("farmCostFormAmount").addEventListener("input", updateAmountPreview);
+  $("farmCostExport").addEventListener("click", () => {
+    const fields = getFields(), fieldFilter = $("farmCostFieldFilter").value, yearFilter = $("farmCostYear").value, catFilter = $("farmCostCategoryFilter").value;
+    const names = new Map(fields.map(field => [String(field.id), field]));
+    const rows = getCosts().filter(cost => (fieldFilter === "ALL" || String(cost.fieldId) === fieldFilter)
+      && (yearFilter === "ALL" || String(cost.date || "").startsWith(yearFilter)) && (catFilter === "ALL" || cost.cat === catFilter));
+    const cell = value => {
+      let text = String(value ?? "");
+      if (/^[\s]*[=+@-]/.test(text)) text = `'${text}`;
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+    const csv = [["Tarih","Parsel","Alan (da)","Kategori","Açıklama","Maliyet (₺/da)","Toplam (₺)"], ...rows.map(cost => {
+      const field = names.get(String(cost.fieldId)), total = amount(cost.amount), area = amount(field?.area);
+      return [cost.date || "", field?.name || "Parsel silinmiş", area || "", cost.cat || "Diğer", cost.desc || "", area ? total / area : "", total];
+    })].map(row => row.map(cell).join(";")).join("\r\n");
+    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }), url = URL.createObjectURL(blob), link = document.createElement("a");
+    link.href = url; link.download = `ekinvya-giderler-${yearFilter === "ALL" ? "tum-yillar" : yearFilter}.csv`; link.click(); URL.revokeObjectURL(url);
   });
   $("farmCostRows").addEventListener("click", event => {
     const button = event.target.closest("[data-cost-delete]");
