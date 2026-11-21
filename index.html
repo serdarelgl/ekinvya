@@ -120,9 +120,13 @@
 
         <!-- Ana Navigasyon Sekmeleri -->
         <div class="space-y-1">
-          <div class="px-2 pb-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase">ÇALIŞMA ALANI</div>
+          <div class="px-2 pb-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase">Menü</div>
 
-          <button type="button" data-nav="parsellerim" class="sidebar-nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80 transition cursor-pointer">
+          <button type="button" data-nav="ana-sayfa" class="sidebar-nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80 transition cursor-pointer">
+            <span class="flex items-center gap-2.5"><span aria-hidden="true">⌂</span>Ana Sayfa</span>
+          </button>
+
+          <button type="button" data-nav="parsellerim" class="sidebar-nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition cursor-pointer">
             <span class="flex items-center gap-2.5">
               <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -149,7 +153,11 @@
               </svg>
               Hava Durumu
             </span>
-            <span class="text-[11px] font-semibold text-emerald-700">17°C</span>
+            <span class="text-[11px] font-semibold text-emerald-700">GPS</span>
+          </button>
+
+          <button type="button" data-nav="ai-asistan" class="sidebar-nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition cursor-pointer">
+            <span class="flex items-center gap-2.5"><span aria-hidden="true">✦</span>AI Asistan</span>
           </button>
         </div>
       </div>
@@ -173,10 +181,33 @@
     <!-- ===================================================================== -->
     <main class="flex-1 min-w-0">
 
+      <section id="viewDashboard" class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div><div class="text-[11px] font-bold tracking-wider text-emerald-700 uppercase">2026 / 2027 ÜRETİM SEZONU</div><h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">Tarımın kontrolü sende.</h1><p class="text-sm text-slate-500 mt-1">Parsellerin, hava raporun ve üretim araçların tek yerde.</p></div>
+          <button type="button" data-go="parsellerim" class="inline-flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl">＋ Parsellerime git</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <article class="rounded-2xl bg-white border border-slate-200 p-4"><div class="text-[10px] font-bold tracking-wider text-slate-400">KAYITLI PARSEL</div><strong id="homeParcelCount" class="block text-2xl font-extrabold text-slate-900 mt-2">—</strong><small class="text-xs text-slate-500">Parsel envanterindeki kayıtlar</small></article>
+          <article class="rounded-2xl bg-white border border-slate-200 p-4"><div class="text-[10px] font-bold tracking-wider text-slate-400">TOPLAM ÜRETİM ALANI</div><strong id="homeAreaTotal" class="block text-2xl font-extrabold text-slate-900 mt-2">— da</strong><small id="homeHectareTotal" class="text-xs text-slate-500">— ha</small></article>
+          <article class="rounded-2xl bg-white border border-slate-200 p-4"><div class="text-[10px] font-bold tracking-wider text-slate-400">EKİLİ ÜRÜNLER</div><strong id="homeCropSummary" class="block text-lg font-bold text-slate-900 mt-2">—</strong><small class="text-xs text-slate-500">Kayıtlı parsellerine göre</small></article>
+        </div>
+        <section class="rounded-2xl bg-gradient-to-br from-[#173f32] to-[#245b4b] text-white p-5 sm:p-6 shadow-sm" aria-labelledby="homeWeatherTitle">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div><div class="text-[10px] font-bold tracking-widest text-emerald-100">YAKININDAKİ HAVA</div><h2 id="homeWeatherTitle" class="text-lg font-bold mt-1">Konumundaki hava durumu</h2><p id="homeWeatherStatus" class="text-xs text-emerald-100 mt-1" aria-live="polite">Güncel rapor için konumunu paylaş.</p></div><button type="button" data-weather-locate class="rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-4 py-2.5 text-sm font-semibold">⌖ Konumumu bul</button></div>
+          <div id="homeWeatherSummary" class="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-3"><div class="rounded-xl bg-white/10 p-4"><span class="text-xs text-emerald-100">Anlık sıcaklık</span><strong id="homeWeatherTemp" class="block text-3xl mt-1">—°</strong></div><div class="rounded-xl bg-white/10 p-4"><span class="text-xs text-emerald-100">Durum</span><strong id="homeWeatherCondition" class="block mt-2">Konum bekleniyor</strong></div><div class="rounded-xl bg-white/10 p-4"><span class="text-xs text-emerald-100">Rüzgâr · Nem</span><strong id="homeWeatherWind" class="block mt-2">—</strong></div></div>
+          <div id="homeForecast" class="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2" aria-label="5 günlük hava tahmini"></div>
+          <div class="mt-4 flex flex-wrap items-center justify-between gap-3"><small class="text-[11px] text-emerald-100">Open-Meteo · Konum izni yalnızca düğmeye basınca istenir.</small><button type="button" data-go="hava-durumu" class="rounded-lg border border-white/25 px-3 py-2 text-xs font-semibold hover:bg-white/10">Detaylı hava raporu →</button></div>
+        </section>
+        <section class="grid grid-cols-1 sm:grid-cols-3 gap-3" aria-label="Hızlı erişim">
+          <button type="button" data-go="parsellerim" class="text-left rounded-2xl bg-white border border-slate-200 p-4 hover:border-emerald-300"><strong>▧ Parsellerim</strong><span class="block text-xs text-slate-500 mt-1">Tarla kayıtlarını ve uydu sınırlarını yönet</span></button>
+          <button type="button" data-go="hava-durumu" class="text-left rounded-2xl bg-white border border-slate-200 p-4 hover:border-emerald-300"><strong>☼ Hava Durumu</strong><span class="block text-xs text-slate-500 mt-1">Windy haritası ve konuma göre ayrıntılı tahmin</span></button>
+          <button type="button" data-go="ai-asistan" class="text-left rounded-2xl bg-white border border-slate-200 p-4 hover:border-emerald-300"><strong>✦ AI Asistan</strong><span class="block text-xs text-slate-500 mt-1">Tarla ve sezonla ilgili danışma alanı</span></button>
+        </section>
+      </section>
+
       <!-- =================================================================== -->
       <!-- GÖRÜNÜM 1: PARSELLERİM (ENVANTER VE YENİ PARSEL EKLEME)             -->
       <!-- =================================================================== -->
-      <section id="viewParcels" class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+      <section id="viewParcels" class="hidden max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
         <!-- Üst Başlık & + Yeni Parsel Butonu -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -782,73 +813,21 @@
       <!-- =================================================================== -->
       <!-- GÖRÜNÜM 4: HAVA DURUMU & İLAÇLAMA TAKVİMİ                           -->
       <!-- =================================================================== -->
-      <section id="viewWeather" class="hidden max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-        <div>
-          <div class="text-[11px] font-bold tracking-wider text-emerald-700 uppercase">TARIMSAL METEOROLOJİ</div>
-          <h1 class="text-2xl sm:text-[26px] font-bold text-slate-900 tracking-tight mt-0.5">Bölgesel Hava Durumu</h1>
-          <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Eligül Çiftliği (Tekirdağ / Karaevli & Çorlu hattı) saatlik ilaçlama ve toprak işleme uygunluk analizi
-          </p>
-        </div>
-
-        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-5">
-          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
-              <div class="text-[10px] font-bold text-slate-400 uppercase">ANLIK SICAKLIK</div>
-              <div class="text-2xl font-extrabold text-slate-900 mt-1">17°C</div>
-              <div class="text-xs text-slate-500 mt-1">Nem: %68 • Çiy Noktası: 11°C</div>
-            </div>
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
-              <div class="text-[10px] font-bold text-slate-400 uppercase">BUGÜNKÜ YAĞIŞ</div>
-              <div class="text-2xl font-extrabold text-sky-700 mt-1">7.7 mm</div>
-              <div class="text-xs text-slate-500 mt-1">Öğleden sonra hafif sağanak</div>
-            </div>
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
-              <div class="text-[10px] font-bold text-slate-400 uppercase">RÜZGAR HIZI</div>
-              <div class="text-2xl font-extrabold text-slate-900 mt-1">15 km/s</div>
-              <div class="text-xs text-slate-500 mt-1">Kuzeydoğu • Sürüklenme düşük</div>
-            </div>
-            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
-              <div class="text-[10px] font-bold text-emerald-800 uppercase">İLAÇLAMA PENCERESİ</div>
-              <div class="text-2xl font-extrabold text-emerald-800 mt-1">Uygun</div>
-              <div class="text-xs text-emerald-700 mt-1">07:00 – 11:30 arası ideal</div>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
-            <div class="bg-sky-50 border border-sky-200 rounded-xl p-3.5 text-center">
-              <div class="text-xs font-bold text-slate-900">Bugün (21.11)</div>
-              <div class="text-lg font-extrabold text-slate-900 my-1.5">17° / 11°</div>
-              <div class="text-xs font-semibold text-sky-700">7.7 mm Yağış</div>
-              <div class="text-[11px] text-slate-500 mt-1">Rüzgar: 15 km/s</div>
-            </div>
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-center">
-              <div class="text-xs font-bold text-slate-800">Yarın (22.11)</div>
-              <div class="text-lg font-extrabold text-slate-900 my-1.5">15° / 8°</div>
-              <div class="text-xs font-medium text-emerald-700">Yağış Yok (0 mm)</div>
-              <div class="text-[11px] text-slate-500 mt-1">Rüzgar: 11 km/s</div>
-            </div>
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-center">
-              <div class="text-xs font-bold text-slate-800">Pazartesi (23.11)</div>
-              <div class="text-lg font-extrabold text-slate-900 my-1.5">14° / 7°</div>
-              <div class="text-xs font-semibold text-sky-700">3.5 mm Yağış</div>
-              <div class="text-[11px] text-slate-500 mt-1">Rüzgar: 18 km/s</div>
-            </div>
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-center">
-              <div class="text-xs font-bold text-slate-800">Salı (24.11)</div>
-              <div class="text-lg font-extrabold text-slate-900 my-1.5">12° / 5°</div>
-              <div class="text-xs font-medium text-emerald-700">Açık (0 mm)</div>
-              <div class="text-[11px] text-slate-500 mt-1">Rüzgar: 9 km/s</div>
-            </div>
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-center">
-              <div class="text-xs font-bold text-slate-800">Çarşamba (25.11)</div>
-              <div class="text-lg font-extrabold text-slate-900 my-1.5">13° / 6°</div>
-              <div class="text-xs font-medium text-emerald-700">Parçalı Bulutlu</div>
-              <div class="text-[11px] text-slate-500 mt-1">Rüzgar: 12 km/s</div>
-            </div>
-          </div>
-        </div>
+      <section id="viewAi" class="hidden max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5">
+        <div><div class="text-[11px] font-bold tracking-wider text-emerald-700 uppercase">EKİNVYA TARIM ASİSTANI</div><h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">AI Asistan</h1><p class="text-sm text-slate-500 mt-1">Parsel ve üretim kayıtlarına göre yardımcı öneriler al.</p></div>
+        <section class="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-5 sm:p-7 space-y-5">
+          <div><h2 class="text-lg font-bold text-slate-900">Nasıl yardımcı olabilirim?</h2><p class="text-sm text-slate-600 mt-1">Bir konu seç veya sorunu yaz. Bu sürüm kayıtlı parsel verileriyle kural tabanlı öneri üretir; yanıtlar uzman ziraat danışmanlığının yerine geçmez.</p></div>
+          <div class="flex flex-wrap gap-2"><button type="button" data-advice="weather" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-300">Hava ve ilaçlama</button><button type="button" data-advice="crop" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-300">Ürün gelişimi</button><button type="button" data-advice="field" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-emerald-300">Parsellerimi özetle</button></div>
+          <form id="assistantQuestionForm" class="space-y-2"><label for="assistantQuestion" class="block text-sm font-semibold text-slate-800">Sorun</label><textarea id="assistantQuestion" rows="3" maxlength="500" placeholder="Örn. Kanola parsellerimde bu hafta nelere dikkat etmeliyim?" class="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm focus:border-emerald-600 focus:outline-none" required></textarea><button type="submit" class="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800">Yanıt hazırla</button></form>
+          <div id="assistantAnswer" class="hidden rounded-xl border border-emerald-200 bg-white p-4 text-sm leading-6 text-slate-700" role="status" aria-live="polite"></div>
+        </section>
       </section>
+
+      <section id="viewWeather" class="hidden max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div><div class="text-[11px] font-bold tracking-wider text-emerald-700 uppercase">KONUM BAZLI HAVA RAPORU</div><h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">Hava Durumu</h1><p id="weatherStatusPage" class="text-sm text-slate-500 mt-1" aria-live="polite">Güncel rapor için konumunu paylaş.</p></div><button type="button" data-weather-locate class="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800">⌖ Anlık konumumu göster</button></div>
+  <section class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-4"><div class="flex items-center justify-between gap-3"><div><h2 class="font-bold text-slate-900">Anlık hava ve 7 günlük tahmin</h2><p class="text-xs text-slate-500 mt-1">Veri kaynağı: <a class="text-emerald-700 underline" href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></p></div><span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">Konum izni kontrollü</span></div><div id="weatherDetail" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"><div class="sm:col-span-2 lg:col-span-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Konum bilgisi bekleniyor.</div></div><div id="weatherForecast" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2" aria-label="7 günlük hava tahmini"></div><div id="weatherHourly" class="flex gap-2 overflow-x-auto pb-2" aria-label="24 saatlik saatlik tahmin"></div></section>
+  <section class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3"><div><h2 class="font-bold text-slate-900">Windy detaylı tahmin haritası</h2><p class="text-xs text-slate-500 mt-1">Harita; rüzgâr, sıcaklık, yağış ve diğer Windy katmanlarını sunar. Koordinatlar harita açıldığında Windy ile paylaşılır.</p></div><div class="relative overflow-hidden rounded-xl bg-slate-100"><iframe id="windyMap" title="Windy hava durumu tahmin haritası" class="h-[320px] sm:h-[460px] w-full border-0" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe><div id="windyPlaceholder" class="absolute inset-0 grid place-items-center bg-slate-100 text-center text-sm text-slate-500">Harita konum bekliyor</div></div><a id="windyFullLink" class="text-sm font-semibold text-emerald-700 underline" href="https://www.windy.com/" target="_blank" rel="noopener noreferrer">Windy’de tam ekran aç ↗</a></section>
+</section>
 
     </main>
   </div>
@@ -1371,12 +1350,21 @@
           document.getElementById('toggleVertexEditLabel').textContent = 'Sınırı Düzenle';
         }
 
+        document.getElementById('viewDashboard').classList.add('hidden');
         document.getElementById('viewParcels').classList.add('hidden');
         document.getElementById('viewParcelDetail').classList.add('hidden');
         document.getElementById('viewGlobalCosts').classList.add('hidden');
         document.getElementById('viewWeather').classList.add('hidden');
+        document.getElementById('viewAi').classList.add('hidden');
 
-        if (viewName === 'parsellerim') {
+        if (viewName === 'ana-sayfa') {
+          setSidebarActive('ana-sayfa');
+          document.getElementById('viewDashboard').classList.remove('hidden');
+          window.ekinvyaRenderDashboard?.();
+        } else if (viewName === 'ai-asistan') {
+          setSidebarActive('ai-asistan');
+          document.getElementById('viewAi').classList.remove('hidden');
+        } else if (viewName === 'parsellerim') {
           setSidebarActive('parsellerim');
           document.getElementById('viewParcels').classList.remove('hidden');
           renderParcelInventory();
@@ -1401,6 +1389,8 @@
           switchMainView(this.getAttribute('data-nav'));
         });
       });
+      window.ekinvyaNavigate = switchMainView;
+      window.ekinvyaParcels = () => parcels;
 
       // -----------------------------------------------------------------------
       // 5. PARSELLERİM (ENVANTER) RENDER & ARAMA / FİLTRELEME
@@ -2736,7 +2726,9 @@
       // -----------------------------------------------------------------------
       populateParcelDropdowns();
       renderParcelInventory();
+      window.ekinvyaRenderDashboard?.();
     });
   </script>
+  <script src="./feature-views.js" defer></script>
 </body>
 </html>
