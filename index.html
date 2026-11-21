@@ -159,6 +159,10 @@
           <button type="button" data-nav="ai-asistan" class="sidebar-nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition cursor-pointer">
             <span class="flex items-center gap-2.5"><span aria-hidden="true">✦</span>AI Asistan</span>
           </button>
+
+          <button type="button" data-nav="profil" class="sidebar-nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition cursor-pointer">
+            <span class="flex items-center gap-2.5"><span aria-hidden="true">◉</span>Profil</span>
+          </button>
         </div>
       </div>
 
@@ -823,6 +827,15 @@
         </section>
       </section>
 
+      <section id="viewProfile" class="hidden max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5">
+        <div><div class="text-[11px] font-bold tracking-wider text-emerald-700 uppercase">HESAP</div><h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">Profil</h1><p class="text-sm text-slate-500 mt-1">Ekinvya çalışma alanın ve hesap bilgilerin.</p></div>
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+          <div class="flex items-center gap-4"><div class="grid h-14 w-14 place-items-center rounded-2xl bg-emerald-100 text-xl font-extrabold text-emerald-800" aria-hidden="true">E</div><div><div class="text-xs font-bold tracking-wider text-emerald-700">ÇALIŞMA ALANI</div><h2 class="text-lg font-bold text-slate-900 mt-1">Eligül Çiftliği</h2><p class="text-sm text-slate-500">Ekinvya tarım yönetimi</p></div></div>
+          <div class="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950" role="status"><strong>Hesap profili bu sürüme bağlı değil.</strong><br>Bu tasarım dosyasında üyelik oturumu ve Supabase profil bilgileri bulunmuyor. Burada gerçek kullanıcı adı veya e-posta gösterilmiyor.</div>
+        </section>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3"><button type="button" data-go="parsellerim" class="rounded-2xl border border-slate-200 bg-white p-4 text-left hover:border-emerald-300"><strong>Parsellerim</strong><span class="mt-1 block text-xs text-slate-500">Kayıtlı parselleri görüntüle</span></button><button type="button" data-go="ana-sayfa" class="rounded-2xl border border-slate-200 bg-white p-4 text-left hover:border-emerald-300"><strong>Ana Sayfa</strong><span class="mt-1 block text-xs text-slate-500">Üretim özetine dön</span></button></div>
+      </section>
+
       <section id="viewWeather" class="hidden max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div><div class="text-[11px] font-bold tracking-wider text-emerald-700 uppercase">KONUM BAZLI HAVA RAPORU</div><h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">Hava Durumu</h1><p id="weatherStatusPage" class="text-sm text-slate-500 mt-1" aria-live="polite">Güncel rapor için konumunu paylaş.</p></div><button type="button" data-weather-locate class="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800">⌖ Anlık konumumu göster</button></div>
   <section class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-4"><div class="flex items-center justify-between gap-3"><div><h2 class="font-bold text-slate-900">Anlık hava ve 7 günlük tahmin</h2><p class="text-xs text-slate-500 mt-1">Veri kaynağı: <a class="text-emerald-700 underline" href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></p></div><span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">Konum izni kontrollü</span></div><div id="weatherDetail" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"><div class="sm:col-span-2 lg:col-span-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-500">Konum bilgisi bekleniyor.</div></div><div id="weatherForecast" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2" aria-label="7 günlük hava tahmini"></div><div id="weatherHourly" class="flex gap-2 overflow-x-auto pb-2" aria-label="24 saatlik saatlik tahmin"></div></section>
@@ -1356,6 +1369,7 @@
         document.getElementById('viewGlobalCosts').classList.add('hidden');
         document.getElementById('viewWeather').classList.add('hidden');
         document.getElementById('viewAi').classList.add('hidden');
+        document.getElementById('viewProfile').classList.add('hidden');
 
         if (viewName === 'ana-sayfa') {
           setSidebarActive('ana-sayfa');
@@ -1364,6 +1378,9 @@
         } else if (viewName === 'ai-asistan') {
           setSidebarActive('ai-asistan');
           document.getElementById('viewAi').classList.remove('hidden');
+        } else if (viewName === 'profil') {
+          setSidebarActive('profil');
+          document.getElementById('viewProfile').classList.remove('hidden');
         } else if (viewName === 'parsellerim') {
           setSidebarActive('parsellerim');
           document.getElementById('viewParcels').classList.remove('hidden');
