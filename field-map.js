@@ -5,9 +5,16 @@
   const status = $("boundaryStatus");
   let map = null;
   let boundaries = null;
+  let preview = null;
   let draftGeometry = null;
   let selectedId = "new";
+  let activeMode = "draw";
   let lastPlaceSearchAt = 0;
+  let crosshairPoints = [];
+  let boxFirstCorner = null;
+  let gpsWatchId = null;
+  let gpsPoints = [];
+  let lastGpsPoint = null;
 
   function geometryAreaDecares(geometry) {
     if (!geometry) return 0;
@@ -34,42 +41,184 @@
     return 0;
   }
 
-  function renderGeometry(geometry) {
-    boundaries.clearLayers();
-    if (!geometry) return;
-    const layer = window.L.geoJSON({ type: "Feature", properties: {}, geometry }, {
-      style: { color: "#1b6847", weight: 3, fillColor: "#83bd79", fillOpacity: 0.26 }
+  function closeRing(ring) {
+    if (!Array.isArray(ring)) return [];
+    const points = ring.filter(point => Array.isArray(point) && point.length >= 2
+      && Number.isFinite(Number(point[0])) && Number.isFinite(Number(point[1])))
+      .map(point => [Number(point[0]), Number(point[1])]);
+    if (points.length < 3) return [];
+    const first = points[0], last = points[points.length - 1];
+    if (first[0] !== last[0] || first[1] !== last[1]) points.push([...first]);
+    return points.length >= 4 ? points : [];
+  }
+
+  function normalizeGeometry(value) {
+    if (!value || !["Polygon", "MultiPolygon"].includes(value.type)) throw new Error("Dosyada Polygon veya MultiPolygon sınırı bulunamadı.");
+    const polygons = value.type === "Polygon" ? [value.coordinates] : value.coordinates;
+    if (!Array.isArray(polygons) || !polygons.length) throw new Error("Parsel geometrisi boş görünüyor.");
+    const normalized = polygons.map(rings => {
+      if (!Array.isArray(rings) || !rings.length) return [];
+      return rings.map(closeRing);
     });
-    layer.eachLayer(item => boundaries.addLayer(item));
-    try { map.fitBounds(boundaries.getBounds(), { padding: [28, 28], maxZoom: 16 }); } catch { /* Invalid/empty geometry remains cleared. */ }
+    if (normalized.some(polygon => !polygon.length || polygon.some(ring => ring.length < 4))) {
+      throw new Error("Dosyada geçerli en az üç köşeli bir parsel sınırı bulunamadı.");
+    }
+    const flat = normalized.flat(2);
+    if (flat.some(([lon, lat]) => Math.abs(lon) > 180 || Math.abs(lat) > 90)) throw new Error("Koordinatlar geçerli enlem/boylam aralığında değil.");
+    return normalized.length === 1 ? { type: "Polygon", coordinates: normalized[0] } : { type: "MultiPolygon", coordinates: normalized };
+  }
+
+  function getFeatureGeometry(value) {
+    if (value?.type === "Feature") return value.geometry;
+    if (value?.type === "FeatureCollection") {
+      const geometries = (value.features || []).map(feature => feature?.geometry).filter(Boolean);
+      const polygons = geometries.flatMap(geometry => geometry.type === "Polygon" ? [geometry.coordinates]
+        : geometry.type === "MultiPolygon" ? geometry.coordinates : []);
+      if (!polygons.length) return null;
+      return polygons.length === 1 ? { type: "Polygon", coordinates: polygons[0] } : { type: "MultiPolygon", coordinates: polygons };
+    }
+    return value;
+  }
+
+  function parseKml(text) {
+    const xml = new DOMParser().parseFromString(text, "application/xml");
+    if (xml.getElementsByTagName("parsererror").length) throw new Error("KML dosyası okunamadı.");
+    const local = (node, name) => [...node.getElementsByTagName("*")].filter(item => item.localName?.toLowerCase() === name.toLowerCase());
+    const coordinateRing = container => {
+      const coordinateNode = local(container, "coordinates")[0];
+      if (!coordinateNode) return [];
+      return coordinateNode.textContent.trim().split(/\s+/).map(value => value.split(",").slice(0, 2).map(Number));
+    };
+    const polygons = local(xml, "Polygon").map(polygon => {
+      const rings = [];
+      const outer = local(polygon, "outerBoundaryIs")[0];
+      if (outer) rings.push(coordinateRing(outer));
+      local(polygon, "innerBoundaryIs").forEach(inner => rings.push(coordinateRing(inner)));
+      return rings;
+    }).filter(rings => rings.length);
+    if (!polygons.length) {
+      const coordinateNodes = local(xml, "coordinates");
+      if (!coordinateNodes.length) throw new Error("KML içinde parsel Polygon sınırı bulunamadı.");
+      polygons.push([coordinateRing(coordinateNodes[0])]);
+    }
+    const value = polygons.length === 1 ? { type: "Polygon", coordinates: polygons[0] } : { type: "MultiPolygon", coordinates: polygons };
+    return normalizeGeometry(value);
   }
 
   function currentGeometry() {
-    let feature = null;
-    boundaries.eachLayer(layer => { feature = layer.toGeoJSON(); });
-    return feature?.geometry || null;
+    const polygons = [];
+    boundaries?.eachLayer(layer => {
+      const geometry = layer.toGeoJSON?.().geometry;
+      if (geometry?.type === "Polygon") polygons.push(geometry.coordinates);
+      else if (geometry?.type === "MultiPolygon") polygons.push(...geometry.coordinates);
+    });
+    if (!polygons.length) return null;
+    return polygons.length === 1 ? { type: "Polygon", coordinates: polygons[0] } : { type: "MultiPolygon", coordinates: polygons };
   }
 
   function changed() {
     const geometry = currentGeometry();
     const area = geometry ? geometryAreaDecares(geometry) : 0;
-    if (geometry && areaInput) areaInput.value = area.toFixed(2);
+    if (areaInput) areaInput.value = geometry ? area.toFixed(2) : "";
     if (selectedId === "new") {
       draftGeometry = geometry;
       status.textContent = geometry
-        ? "Sınır yeni tarla formuna bağlandı; hesaplanan alan dekardır. Formu kaydetmeyi unutma."
+        ? `Sınır yeni tarla formuna bağlandı · yaklaşık ${area.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} da. Formu kaydetmeyi unutma.`
         : "Yeni tarla formuna bağlanacak sınırı haritada çiz.";
       return;
     }
     const field = window.ekinvyaGetFields?.().find(item => String(item.id) === selectedId);
     if (field) {
       window.ekinvyaSetFieldGeometry?.(field.id, geometry, geometry ? area : null);
-      if (geometry) {
-        status.textContent = `Sınır ${field.name} parseline kaydedildi · yaklaşık ${area.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} da.`;
-      } else {
-        status.textContent = `Sınır ${field.name} parselinden kaldırıldı.`;
-      }
+      status.textContent = geometry
+        ? `Sınır ${field.name} parseline kaydedildi · yaklaşık ${area.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} da.`
+        : `Sınır ${field.name} parselinden kaldırıldı.`;
     }
+  }
+
+  function fitBoundary() {
+    try { if (boundaries?.getLayers().length) map.fitBounds(boundaries.getBounds(), { padding: [28, 28], maxZoom: 16 }); } catch { /* Boş sınırda görünüm değişmez. */ }
+  }
+
+  function applyGeometry(geometry, message) {
+    const normalized = normalizeGeometry(geometry);
+    boundaries.clearLayers();
+    preview.clearLayers();
+    const layer = window.L.geoJSON({ type: "Feature", properties: {}, geometry: normalized }, {
+      style: { color: "#1b6847", weight: 3, fillColor: "#83bd79", fillOpacity: 0.26 }
+    });
+    layer.eachLayer(item => boundaries.addLayer(item));
+    changed();
+    fitBoundary();
+    if (message) status.textContent = message;
+    return normalized;
+  }
+
+  function renderGeometry(geometry) {
+    boundaries.clearLayers();
+    preview.clearLayers();
+    if (!geometry) return;
+    const layer = window.L.geoJSON({ type: "Feature", properties: {}, geometry }, {
+      style: { color: "#1b6847", weight: 3, fillColor: "#83bd79", fillOpacity: 0.26 }
+    });
+    layer.eachLayer(item => boundaries.addLayer(item));
+    fitBoundary();
+  }
+
+  function clearPreview() { if (preview) preview.clearLayers(); }
+
+  function showModePanel(mode) {
+    const panelIds = { import: "boundaryImportPanel", crosshair: "boundaryCrosshairPanel", box: "boundaryBoxPanel", gpswalk: "boundaryGpsPanel" };
+    Object.entries(panelIds).forEach(([key, id]) => { $(id).hidden = key !== mode; });
+    $("mapCenterCrosshairOverlay").hidden = mode !== "crosshair";
+    document.querySelectorAll("[data-boundary-mode]").forEach(button => {
+      const active = button.dataset.boundaryMode === mode;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+  }
+
+  function stopGpsWalk(finish) {
+    if (gpsWatchId !== null) navigator.geolocation?.clearWatch(gpsWatchId);
+    gpsWatchId = null;
+    $("boundaryGpsStart").disabled = false;
+    $("boundaryGpsFinish").disabled = true;
+    if (finish) {
+      if (gpsPoints.length < 3) {
+        status.textContent = "Kapalı sınır için GPS kaydında en az üç farklı köşe gerekir.";
+      } else {
+        const coords = gpsPoints.map(point => [point.lng, point.lat]);
+        applyGeometry({ type: "Polygon", coordinates: [closeRing(coords)] }, "GPS ile çevre kaydı tamamlandı; alanı kontrol edip tarla formunu kaydet.");
+      }
+    } else if (gpsPoints.length) {
+      status.textContent = "GPS kaydı durduruldu; sınırı kullanmak için ‘Kaydı bitir’ düğmesine bas.";
+    }
+    setText("boundaryGpsCount", gpsPoints.length ? `${gpsPoints.length} konum noktası` : "GPS kaydı kapalı");
+  }
+
+  function setMode(mode) {
+    if (gpsWatchId !== null) stopGpsWalk(false);
+    activeMode = mode;
+    boxFirstCorner = null;
+    crosshairPoints = [];
+    clearPreview();
+    showModePanel(mode);
+    setText("boundaryCrosshairCount", "0 nokta");
+    if (mode === "draw") status.textContent = "Harita araç çubuğundan çokgen çiz veya mevcut sınırı düzenle.";
+    if (mode === "import") status.textContent = "KML ya da GeoJSON dosyası seçerek parsel sınırını yükle.";
+    if (mode === "crosshair") status.textContent = "Haritayı her köşeye taşı; ortadaki hedefi sırayla noktaya getir.";
+    if (mode === "box") status.textContent = "Haritada dikdörtgenin karşılıklı iki köşesine dokun.";
+    if (mode === "gpswalk") status.textContent = "GPS çevre kaydını başlatmak için düğmeye bas.";
+  }
+
+  function previewCrosshair() {
+    clearPreview();
+    if (crosshairPoints.length >= 3) {
+      window.L.polygon(crosshairPoints, { color: "#16a05a", weight: 3, dashArray: "6 5", fillColor: "#83bd79", fillOpacity: 0.16 }).addTo(preview);
+    } else if (crosshairPoints.length >= 2) {
+      window.L.polyline(crosshairPoints, { color: "#16a05a", weight: 3, dashArray: "6 5" }).addTo(preview);
+    }
+    setText("boundaryCrosshairCount", `${crosshairPoints.length} nokta${crosshairPoints.length >= 3 ? " · alan hazır" : ""}`);
   }
 
   function init() {
@@ -88,6 +237,7 @@
     imagery.addTo(map);
     window.L.control.layers({ "Uydu · Esri": imagery, "OpenStreetMap": streets }, null, { position: "topright", collapsed: true }).addTo(map);
     boundaries = new window.L.FeatureGroup().addTo(map);
+    preview = new window.L.LayerGroup().addTo(map);
     map.addControl(new window.L.Control.Draw({
       position: "topright",
       draw: {
@@ -103,7 +253,77 @@
     });
     map.on(window.L.Draw.Event.EDITED, changed);
     map.on(window.L.Draw.Event.DELETED, changed);
+    map.on("click", event => {
+      if (activeMode !== "box") return;
+      if (!boxFirstCorner) {
+        boxFirstCorner = event.latlng;
+        clearPreview();
+        window.L.circleMarker(boxFirstCorner, { radius: 6, color: "#fff", weight: 2, fillColor: "#16834a", fillOpacity: 1 }).addTo(preview);
+        status.textContent = "İlk köşe alındı; karşı köşeye dokun.";
+        return;
+      }
+      const bounds = window.L.latLngBounds(boxFirstCorner, event.latlng);
+      const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
+      applyGeometry({ type: "Polygon", coordinates: [[[sw.lng, sw.lat], [ne.lng, sw.lat], [ne.lng, ne.lat], [sw.lng, ne.lat], [sw.lng, sw.lat]]] }, "Hızlı dikdörtgen sınırı oluşturuldu; köşeleri düzenleyebilirsin.");
+      boxFirstCorner = null;
+    });
+
     selector.addEventListener("change", () => selectField(selector.value));
+    document.querySelectorAll("[data-boundary-mode]").forEach(button => button.addEventListener("click", () => setMode(button.dataset.boundaryMode)));
+    setMode("draw");
+
+    $("boundaryFileInput").addEventListener("change", async event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (file.size > 10 * 1024 * 1024) { status.textContent = "Dosya en fazla 10 MB olabilir."; event.target.value = ""; return; }
+      status.textContent = `${file.name} okunuyor…`;
+      try {
+        const text = await file.text();
+        const geometry = /\.kml$/i.test(file.name) || /<kml[\s>]/i.test(text) ? parseKml(text) : normalizeGeometry(getFeatureGeometry(JSON.parse(text)));
+        const area = geometryAreaDecares(geometry);
+        if (!area) throw new Error("Dosyadan geçerli alan hesaplanamadı.");
+        applyGeometry(geometry, `${file.name} sınırı yüklendi · yaklaşık ${area.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} da. Formu kaydetmeyi unutma.`);
+      } catch (error) {
+        status.textContent = error.message || "Dosya okunamadı. KML veya Polygon GeoJSON kullan.";
+      } finally { event.target.value = ""; }
+    });
+
+    $("boundaryCrosshairAdd").addEventListener("click", () => {
+      if (activeMode !== "crosshair") return;
+      crosshairPoints.push(map.getCenter());
+      previewCrosshair();
+    });
+    $("boundaryCrosshairUndo").addEventListener("click", () => { crosshairPoints.pop(); previewCrosshair(); });
+    $("boundaryCrosshairClear").addEventListener("click", () => { crosshairPoints = []; previewCrosshair(); status.textContent = "Hedef imleci noktaları temizlendi."; });
+    $("boundaryCrosshairFinish").addEventListener("click", () => {
+      if (crosshairPoints.length < 3) { status.textContent = "Sınırı tamamlamak için en az üç köşe noktası ekle."; return; }
+      const ring = closeRing(crosshairPoints.map(point => [point.lng, point.lat]));
+      applyGeometry({ type: "Polygon", coordinates: [ring] }, "Hedef imleciyle sınır tamamlandı; alanı kontrol edip tarla formunu kaydet.");
+    });
+
+    $("boundaryGpsStart").addEventListener("click", () => {
+      if (!navigator.geolocation) { status.textContent = "Bu tarayıcı konum hizmetini desteklemiyor."; return; }
+      gpsPoints = []; lastGpsPoint = null; clearPreview();
+      $("boundaryGpsStart").disabled = true; $("boundaryGpsFinish").disabled = false;
+      status.textContent = "GPS izni bekleniyor; tarla çevresinde yürüyebilirsin.";
+      gpsWatchId = navigator.geolocation.watchPosition(position => {
+        const point = window.L.latLng(position.coords.latitude, position.coords.longitude);
+        if (position.coords.accuracy > 60) { setText("boundaryGpsCount", `GPS doğruluğu ±${Math.round(position.coords.accuracy)} m · daha iyi sinyal bekleniyor`); return; }
+        const distance = lastGpsPoint ? map.distance(lastGpsPoint, point) : Infinity;
+        if (distance < 5) return;
+        gpsPoints.push(point); lastGpsPoint = point;
+        clearPreview();
+        if (gpsPoints.length >= 3) window.L.polygon(gpsPoints, { color: "#16834a", weight: 3, dashArray: "6 5", fillColor: "#83bd79", fillOpacity: 0.14 }).addTo(preview);
+        else if (gpsPoints.length >= 2) window.L.polyline(gpsPoints, { color: "#16834a", weight: 3, dashArray: "6 5" }).addTo(preview);
+        setText("boundaryGpsCount", `${gpsPoints.length} konum noktası`);
+        map.panTo(point, { animate: false });
+      }, error => {
+        stopGpsWalk(false);
+        status.textContent = error.code === 1 ? "Konum izni verilmedi. Tarayıcı ayarlarından izin verip yeniden dene." : "GPS konumu alınamadı; konum/GPS ayarlarını kontrol et.";
+      }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 });
+    });
+    $("boundaryGpsFinish").addEventListener("click", () => stopGpsWalk(true));
+
     $("mapLocate")?.addEventListener("click", () => {
       if (!navigator.geolocation) { status.textContent = "Bu cihaz konum bilgisini desteklemiyor."; return; }
       status.textContent = "Cihaz konumu alınıyor…";
@@ -130,11 +350,11 @@
         const place = results[0];
         map.setView([Number(place.lat), Number(place.lon)], Math.max(map.getZoom(), 14));
         status.textContent = `Harita şu konuma odaklandı: ${place.display_name}`;
-      } catch (error) {
-        status.textContent = error.message || "Yer aranamadı. Bağlantını kontrol edip yeniden dene.";
-      }
+      } catch (error) { status.textContent = error.message || "Yer aranamadı. Bağlantını kontrol edip yeniden dene."; }
     });
   }
+
+  function setText(id, value) { const node = $(id); if (node) node.textContent = value; }
 
   function refreshSelect() {
     if (!selector) return;
@@ -151,10 +371,12 @@
     selectedId = id === "new" ? "new" : String(id);
     if (selector) selector.value = selectedId;
     const field = (window.ekinvyaGetFields?.() || []).find(item => String(item.id) === selectedId);
-    if (map) renderGeometry(selectedId === "new" ? draftGeometry : field?.geometry);
+    const geometry = selectedId === "new" ? draftGeometry : field?.geometry;
+    if (map) renderGeometry(geometry);
+    if (geometry && areaInput) areaInput.value = geometryAreaDecares(geometry).toFixed(2);
     status.textContent = selectedId === "new"
       ? "Yeni tarla için sınır çiz; kayıt sırasında forma eklenir."
-      : field?.geometry ? `${field.name} sınırı yüklendi. Düzenlemeler otomatik kaydedilir.` : `${field?.name || "Seçili tarla"} için sınır çiz.`;
+      : field?.geometry ? `${field.name} sınırı yüklendi. Düzenlemeler bulut kaydına aktarılır.` : `${field?.name || "Seçili tarla"} için sınır çiz.`;
   }
 
   window.ekinvyaFieldMap = {
@@ -162,7 +384,14 @@
     resize() { if (map) window.setTimeout(() => map.invalidateSize(), 80); },
     refreshSelect,
     selectField,
+    stopCapture() { if (gpsWatchId !== null) stopGpsWalk(false); },
     getDraftGeometry: () => draftGeometry,
-    clearDraft() { draftGeometry = null; selectedId = "new"; if (selector) selector.value = "new"; if (map) renderGeometry(null); }
+    clearDraft() {
+      if (gpsWatchId !== null) stopGpsWalk(false);
+      draftGeometry = null; selectedId = "new"; crosshairPoints = []; boxFirstCorner = null;
+      if (selector) selector.value = "new";
+      if (map) renderGeometry(null);
+      setMode("draw");
+    }
   };
 })();

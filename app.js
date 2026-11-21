@@ -65,7 +65,7 @@ function showView(view){
  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("active",v.id==="view-"+view));
  document.querySelectorAll("[data-view]").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
  const labels={dashboard:"Ana Sayfa",weather:"Hava Durumu",ai:"AI Asistan",profile:"Profil",npk:"NPK Hesap Makinesi",fields:"Parsellerim",ndvi:"Sentinel‑2 NDVI",season:"Sezon Takibi",soil:"Toprak Analizleri",costs:"Maliyet & Gübre Fiyatları",farmers:"Çiftçi CRM",reports:"Raporlar"};
- $("crumbTitle").textContent=labels[view]||"Genel Bakış";window.scrollTo({top:0,behavior:"smooth"});if(view==="fields")window.ekinvyaFieldMap?.refreshSelect();if(view==="reports")renderSaves();if(view==="weather"&&window.ekinvyaWeatherPosition)updateWindyFrames(window.ekinvyaWeatherPosition);if(view==="costs")renderCost();if(view==="season"){curField=null;renderSeason()}
+ $("crumbTitle").textContent=labels[view]||"Genel Bakış";window.scrollTo({top:0,behavior:"smooth"});if(view==="fields")window.ekinvyaFieldMap?.refreshSelect();if(view==="reports")renderSaves();if(view==="weather"&&window.ekinvyaWeatherPosition)updateWindyFrames(window.ekinvyaWeatherPosition);if(view==="costs"){renderCost();window.ekinvyaRenderFarmCosts?.()}if(view==="season"){curField=null;renderSeason()}
 }
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.view)));
  const weatherStatusHome=$("weatherStatusHome"),weatherStatusPage=$("weatherStatusPage");
@@ -113,23 +113,28 @@ function renderFields(){
  $("fieldAreaTotal").textContent=`${fmt(fields.reduce((sum,field)=>sum+num(field.area),0))} da`;
  $("fieldHectareTotal").textContent=`${fmt(fields.reduce((sum,field)=>sum+num(field.area),0)/10,1)} ha toplam`;
  $("fieldBoundaryCount").textContent=`${fields.filter(field=>field.geometry).length} / ${fields.length}`;
- const query=$("fieldSearchInput").value.trim().toLocaleLowerCase("tr-TR"),crop=$("fieldCropFilter").value;
+ const query=$("fieldSearchInput").value.trim().toLocaleLowerCase("tr-TR"),crop=$("fieldCropFilter").value,season=$("fieldSeasonFilter").value;
+ const seasonValues=[...new Set(fields.map(field=>field.season).filter(Boolean))].sort((a,b)=>String(b).localeCompare(String(a),"tr-TR")),seasonFilter=$("fieldSeasonFilter"),oldSeason=seasonFilter.value;
+ seasonFilter.innerHTML='<option value="ALL">Tüm sezonlar</option>'+seasonValues.map(value=>`<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("");seasonFilter.value=seasonValues.includes(oldSeason)?oldSeason:"ALL";
+ const focusSeason=seasonValues.includes(season)?season:seasonValues[0];$("fieldSeasonChip").textContent=focusSeason?`${focusSeason} · ${fields.filter(field=>field.season===focusSeason).length} parsel`:`${fields.length} kayıtlı parsel`;
  const visible=fields.filter(field=>{
    const matchesCrop=crop==="ALL"||field.crop===crop;
+   const matchesSeason=seasonFilter.value==="ALL"||field.season===seasonFilter.value;
    const searchable=[field.name,field.location,field.crop,field.ada,field.parsel,field.season].filter(Boolean).join(" ").toLocaleLowerCase("tr-TR");
-   return matchesCrop&&(!query||searchable.includes(query));
+   return matchesCrop&&matchesSeason&&(!query||searchable.includes(query));
  });
  const card=field=>{
    const latest=field.ndviHistory?.[0],observations=latest?.observations||[],ndvi=observations.length?Number(observations[observations.length-1].mean):null;
    const cropIcon={"Buğday":"🌾","Arpa":"🌿","Kanola":"🌼","Ayçiçeği":"🌻","Mısır":"🌽"}[field.crop]||"🌱";
    const info=[field.location,field.crop,field.season].filter(Boolean).map(escapeHtml).join(" · ");
-   return `<article class="field-card"><button class="field-card-map" type="button" data-field-action="focus" data-field-id="${escapeHtml(field.id)}" aria-label="${escapeHtml(field.name)} sınırını haritada göster">${fieldPreview(field.geometry)}<span class="field-card-map-tag">${field.geometry?"SINIR KAYITLI":"SINIR BEKLİYOR"}</span></button><div class="field-card-body"><div class="field-card-titleline"><span class="field-crop-icon" aria-hidden="true">${cropIcon}</span><div class="field-card-titlewrap"><button class="field-card-title" type="button" data-field-action="focus" data-field-id="${escapeHtml(field.id)}">${escapeHtml(field.name)}</button><small>${info||"Ürün ve konum bilgisi eklenmemiş"}</small></div><span class="field-card-area">${fmt(field.area)} <small>da</small></span></div><div class="field-card-meta"><span>${field.ada||field.parsel?`Ada ${escapeHtml(field.ada||"—")} · Parsel ${escapeHtml(field.parsel||"—")}`:"Parsel bilgisi girilmedi"}</span><span>${ndvi!==null&&Number.isFinite(ndvi)?`Son NDVI ${ndvi.toFixed(3)}`:"Uydu analizi yapılmadı"}</span></div>${field.notes?`<p class="field-card-note">${escapeHtml(field.notes)}</p>`:""}<div class="field-card-actions">${field.geometry?`<button class="secondary" type="button" data-field-action="ndvi" data-field-id="${escapeHtml(field.id)}">NDVI analizi</button>`:`<button class="secondary" type="button" data-field-action="draw" data-field-id="${escapeHtml(field.id)}">Sınır çiz</button>`}<button class="secondary" type="button" data-field-action="npk" data-field-id="${escapeHtml(field.id)}">NPK hesabı</button><button class="field-delete" type="button" data-field-action="delete" data-field-id="${escapeHtml(field.id)}" aria-label="${escapeHtml(field.name)} tarlasını sil">Sil</button></div></div></article>`;
+   return `<article class="field-card"><button class="field-card-map" type="button" data-field-action="focus" data-field-id="${escapeHtml(field.id)}" aria-label="${escapeHtml(field.name)} sınırını haritada göster">${fieldPreview(field.geometry)}<span class="field-card-map-tag">${field.geometry?"SINIR KAYITLI":"SINIR BEKLİYOR"}</span></button><div class="field-card-body"><div class="field-card-titleline"><span class="field-crop-icon" aria-hidden="true">${cropIcon}</span><div class="field-card-titlewrap"><button class="field-card-title" type="button" data-field-action="focus" data-field-id="${escapeHtml(field.id)}">${escapeHtml(field.name)}</button><small>${info||"Ürün ve konum bilgisi eklenmemiş"}</small></div><span class="field-card-area">${fmt(field.area)} <small>da</small></span></div><div class="field-card-meta"><span>${field.ada||field.parsel?`Ada ${escapeHtml(field.ada||"—")} · Parsel ${escapeHtml(field.parsel||"—")}`:"Parsel bilgisi girilmedi"}</span><span>${ndvi!==null&&Number.isFinite(ndvi)?`Son NDVI ${ndvi.toFixed(3)}`:"Uydu analizi yapılmadı"}</span></div>${field.notes?`<p class="field-card-note">${escapeHtml(field.notes)}</p>`:""}<div class="field-card-actions">${field.geometry?`<button class="secondary" type="button" data-field-action="ndvi" data-field-id="${escapeHtml(field.id)}">NDVI analizi</button>`:`<button class="secondary" type="button" data-field-action="draw" data-field-id="${escapeHtml(field.id)}">Sınır çiz</button>`}<button class="secondary" type="button" data-field-action="npk" data-field-id="${escapeHtml(field.id)}">NPK hesabı</button><button class="secondary" type="button" data-field-action="detail" data-field-id="${escapeHtml(field.id)}">Parsel detayları</button><button class="secondary" type="button" data-field-action="cost" data-field-id="${escapeHtml(field.id)}">Gider ekle</button><button class="field-delete" type="button" data-field-action="delete" data-field-id="${escapeHtml(field.id)}" aria-label="${escapeHtml(field.name)} tarlasını sil">Sil</button></div></div></article>`;
  };
  $("dashboardFields").innerHTML=fields.length?fields.slice(0,4).map(field=>`<div class="quickitem"><div class="quickicon" aria-hidden="true">${{"Buğday":"🌾","Arpa":"🌿","Kanola":"🌼","Ayçiçeği":"🌻","Mısır":"🌽"}[field.crop]||"🌱"}</div><div class="field-summary"><button class="field-focus" type="button" data-dashboard-field="${escapeHtml(field.id)}">${escapeHtml(field.name)} · ${fmt(field.area)} da</button><small>${[field.crop,field.location].filter(Boolean).map(escapeHtml).join(" · ")||"Ürün ve konum bilgisi eklenmemiş"}${field.geometry?" · Sınır kayıtlı":""}</small></div></div>`).join(""):`<div class="quickitem"><div class="quickicon">▧</div><div><strong>Henüz tarla eklenmedi</strong><small>“Tarla ekle” ile ilk parselini kaydet.</small></div></div>`;
  $("fieldsList").innerHTML=visible.length?visible.map(card).join(""):fields.length?`<div class="field-empty"><strong>Aramana uygun parsel yok</strong><span>Arama metnini veya ürün filtresini değiştirebilirsin.</span></div>`:`<div class="field-empty"><span class="field-empty-icon" aria-hidden="true">▧</span><strong>Henüz parsel eklenmemiş</strong><span>İlk tarlanı kaydettiğinde uydu sınırlarını ve analizlerini burada takip edebilirsin.</span><button class="primary" type="button" onclick="openFieldDialog()">＋ İlk parselini ekle</button></div>`;
 }
 $("fieldSearchInput").addEventListener("input",renderFields);
 $("fieldCropFilter").addEventListener("change",renderFields);
+$("fieldSeasonFilter").addEventListener("change",renderFields);
 let fieldDialogOpener=null;
 function openFieldDialog(fieldId="new"){
  const dialog=$("fieldDialog"),selector=$("boundaryFieldSelect"),form=$("fieldForm"),isNew=String(fieldId)==="new";
@@ -145,6 +150,7 @@ function openFieldDialog(fieldId="new"){
 }
 window.openFieldDialog=openFieldDialog;
 function closeFieldDialog(){
+ window.ekinvyaFieldMap?.stopCapture?.();
  $("fieldDialog").hidden=true;document.body.classList.remove("field-dialog-open");
  if(fieldDialogOpener?.isConnected)fieldDialogOpener.focus();fieldDialogOpener=null;
 }
@@ -168,7 +174,7 @@ $("fieldForm").addEventListener("reset",()=>window.setTimeout(()=>window.ekinvya
 $("fieldsList").addEventListener("click",event=>{
  const button=event.target.closest("[data-field-action]");if(!button)return;
  const id=button.dataset.fieldId,action=button.dataset.fieldAction;
- if(action==="focus")focusField(id);else if(action==="draw")drawFieldBoundary(id);else if(action==="ndvi")showNdvi(id);else if(action==="npk")useFieldForNpk(id);else if(action==="delete")deleteField(id);
+ if(action==="focus")focusField(id);else if(action==="detail"){openField(Number(id));showView("season")}else if(action==="draw")drawFieldBoundary(id);else if(action==="ndvi")showNdvi(id);else if(action==="npk")useFieldForNpk(id);else if(action==="cost")window.ekinvyaOpenFarmCostDialog?.(id);else if(action==="delete")deleteField(id);
 });
 $("dashboardFields").addEventListener("click",event=>{const button=event.target.closest("[data-dashboard-field]");if(button)focusField(button.dataset.dashboardField)});
 $("fieldForm").addEventListener("submit",async e=>{

@@ -8,6 +8,7 @@ Ekinvya; parsel kayıtları, Sentinel‑2 tarla analizleri, tarımsal hesaplar v
 - `aydinlatma.html` — üyelik sırasında bağlantı verilen KVKK aydınlatma metni taslağı
 - `styles.css` — masaüstü ve mobil arayüz stilleri
 - `app.js` — arayüz, bulut kayıtları, GPS, Open-Meteo ve Windy bağlantıları
+- `farm-costs.js` — parsel bazlı gider kayıtları, kategori dağılımı ve kârlılık tahmini
 - `field-map.js` — haritada parsel sınırı çizimi ve alan hesabı
 - `api/ndvi.js` — kullanıcı oturumunu doğrulayıp Copernicus Sentinel Hub’dan Sentinel‑2 L2A NDVI istatistiklerini alan Vercel Function
 - `auth.js` ve `supabase-config.js` — e-posta üyeliği, giriş, doğrulama, şifre sıfırlama ve oturum yönetimi

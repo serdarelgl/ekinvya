@@ -23,6 +23,7 @@
   <div><div class="navlabel">Menü</div><nav class="nav" id="nav">
     <button class="active" data-view="dashboard"><span class="ico">⌂</span> Ana Sayfa</button>
     <button data-view="fields"><span class="ico">▧</span> Parsellerim <span class="nav-count" id="sidebarParcelBadge">0</span></button>
+    <button data-view="costs"><span class="ico">₺</span> Maliyet</button>
     <button data-view="weather"><span class="ico">☼</span> Hava Durumu</button>
     <button data-view="ai"><span class="ico">✦</span> AI Asistan</button>
     <button data-view="profile"><span class="ico">◉</span> Profil</button>
@@ -102,7 +103,8 @@
     <section class="field-filterbar" aria-label="Parsel arama ve filtreleme">
       <label class="field-search"><span aria-hidden="true">⌕</span><span class="sr-only">Parsel veya mahalle ara</span><input id="fieldSearchInput" type="search" placeholder="Parsel veya mahalle ara…" autocomplete="off"></label>
       <label class="field-filter"><span class="sr-only">Ürüne göre filtrele</span><select id="fieldCropFilter"><option value="ALL">Tüm ürünler</option><option>Buğday</option><option>Arpa</option><option>Kanola</option><option>Ayçiçeği</option><option>Mısır</option><option>Diğer</option></select></label>
-      <span class="field-season-chip">2026/2027 sezonu</span>
+      <label class="field-filter"><span class="sr-only">Üretim sezonuna göre filtrele</span><select id="fieldSeasonFilter"><option value="ALL">Tüm sezonlar</option></select></label>
+      <span class="field-season-chip" id="fieldSeasonChip">Sezon özeti</span>
     </section>
     <div id="fieldsList" class="field-card-grid" aria-live="polite"></div>
     <div id="fieldDialog" class="field-dialog-backdrop" hidden>
@@ -116,7 +118,27 @@
             <button class="secondary map-locate" id="mapLocate" type="button">◎ Konumuma git</button>
             <p id="boundaryStatus" role="status" aria-live="polite">Yeni parsel formu için sınır çizebilirsin.</p>
           </div>
-          <div id="fieldBoundaryMap" class="field-boundary-map" role="application" aria-label="Tarla sınırı çizim haritası"></div>
+          <div class="boundary-methods" role="group" aria-label="Tarla sınırı ekleme yöntemi">
+            <button type="button" class="boundary-method is-active" data-boundary-mode="draw" aria-pressed="true">Haritada çiz</button>
+            <button type="button" class="boundary-method" data-boundary-mode="import" aria-pressed="false">KML / GeoJSON yükle</button>
+            <button type="button" class="boundary-method" data-boundary-mode="crosshair" aria-pressed="false">Hedef imleci</button>
+            <button type="button" class="boundary-method" data-boundary-mode="box" aria-pressed="false">Hızlı kutu</button>
+            <button type="button" class="boundary-method" data-boundary-mode="gpswalk" aria-pressed="false">GPS ile çevreyi yürü</button>
+          </div>
+          <div class="boundary-mode-panel" id="boundaryImportPanel" hidden>
+            <label for="boundaryFileInput"><strong>TKGM’den indirdiğin .KML veya .GeoJSON sınır dosyasını seç.</strong><span>Dosya bu tarayıcıda okunur; sınır kaydı formu gönderilince hesabına eşitlenir.</span></label>
+            <input id="boundaryFileInput" type="file" accept=".kml,.geojson,.json,application/vnd.google-earth.kml+xml,application/geo+json">
+          </div>
+          <div class="boundary-mode-panel" id="boundaryCrosshairPanel" hidden>
+            <span>Haritayı köşe noktalarına taşı, her noktada düğmeye bas; en az üç nokta gerekir.</span>
+            <div class="boundary-mode-actions"><strong id="boundaryCrosshairCount" aria-live="polite">0 nokta</strong><button type="button" class="secondary" id="boundaryCrosshairAdd">Ortadaki noktayı ekle</button><button type="button" class="secondary" id="boundaryCrosshairUndo">Son noktayı geri al</button><button type="button" class="primary" id="boundaryCrosshairFinish">Sınırı tamamla</button><button type="button" class="secondary" id="boundaryCrosshairClear">Temizle</button></div>
+          </div>
+          <div class="boundary-mode-panel" id="boundaryBoxPanel" hidden>Haritada dikdörtgenin karşılıklı iki köşesine sırayla dokun. Oluşan sınırın köşelerini harita düzenleme aracından hassaslaştırabilirsin.</div>
+          <div class="boundary-mode-panel" id="boundaryGpsPanel" hidden>
+            <span>Tarla çevresinde yürürken konum noktaları alınır. GPS yalnızca başlat düğmesine bastığında istenir; hassasiyet ve çevre koşulları alan hesabını etkiler.</span>
+            <div class="boundary-mode-actions"><button type="button" class="primary" id="boundaryGpsStart">GPS kaydını başlat</button><button type="button" class="secondary" id="boundaryGpsFinish" disabled>Kaydı bitir ve sınırı kullan</button><strong id="boundaryGpsCount" role="status" aria-live="polite">GPS kaydı kapalı</strong></div>
+          </div>
+          <div class="boundary-map-wrap"><div id="fieldBoundaryMap" class="field-boundary-map" role="application" aria-label="Tarla sınırı çizim haritası"></div><div id="mapCenterCrosshairOverlay" class="map-center-crosshair" hidden aria-hidden="true"><span></span></div></div>
           <p class="map-footnote">Esri World Imagery uydu görüntüsü varsayılandır; katman menüsünden OpenStreetMap’i seçebilirsin. Yer araması © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap katkıcıları</a>. NDVI verisi Sentinel‑2 L2A’dan alınır.</p>
         </section>
         <section class="panel field-form-panel" id="fieldFormPanel"><div class="panelhead"><div><h3>Parsel bilgileri</h3><p>Yıldızlı alanlar zorunludur.</p></div></div>
@@ -240,7 +262,17 @@
   </section>
   <section class="view" id="view-soil"><div class="pageplaceholder"><div class="eyebrow">TOPRAK VERİLERİ</div><h2>Toprak Analizleri</h2><p>Analiz tarihi, laboratuvar, pH, organik madde, tuzluluk ve ölçülen besin elementleri için kayıt ekranı hazırlanacak. Öneriler, analiz yöntemi ve uygun yerel referanslarla birlikte ele alınacak.</p></div></section>
   <section class="view" id="view-costs">
-    <div class="heading"><div><div class="eyebrow">GİRDİ EKONOMİSİ</div><h1>Maliyet & Gübre Fiyatları</h1><p>Fiyatları gir, NPK hesabının maliyetini gör, senaryoları karşılaştır.</p></div></div>
+    <div class="heading"><div><div class="eyebrow">ÜRETİM EKONOMİSİ</div><h1>Maliyet ve kârlılık</h1><p>Parsel giderlerini kaydet, sezon maliyetlerini ve tahmini başabaş noktasını takip et.</p></div><button class="primary" type="button" id="openFarmCostForm">＋ Yeni gider ekle</button></div>
+    <section class="cost-overview-grid" aria-label="Maliyet özeti">
+      <article class="cost-overview-card"><span>TOPLAM GİDER</span><strong id="farmCostTotal">0 ₺</strong><small id="farmCostPeriod">Tüm kayıtlar</small></article>
+      <article class="cost-overview-card"><span>ORTALAMA MALİYET</span><strong id="farmCostPerDa">—</strong><small>₺ / da · seçili parseller</small></article>
+      <article class="cost-overview-card"><span>TAHMİNİ BRÜT GELİR</span><strong id="farmGrossRevenue">—</strong><small id="farmGrossNote">Sezon verimine göre</small></article>
+      <article class="cost-overview-card cost-overview-highlight"><span id="farmNetLabel">TAHMİNİ NET SONUÇ</span><strong id="farmNetResult">—</strong><small id="farmBreakEven">Gelir varsayımlarını sezon takibinde gir</small></article>
+    </section>
+    <section class="panel farm-cost-simulator"><div class="panelhead"><div><h2>Verim ve satış fiyatı simülatörü</h2><p>Parsel sezonunda kayıtlı değerler başlangıç olarak kullanılır; buradaki değişiklikler yalnızca tahmini günceller.</p></div><span class="tag">TAHMİN</span></div><div class="farm-cost-controls"><label class="field"><span>Parsel kapsamı</span><select id="farmCostFieldFilter"><option value="ALL">Tüm parseller</option></select></label><label class="field"><span>Beklenen verim (kg/da)</span><input id="farmCostYield" type="number" min="0" step="10" inputmode="decimal" value="450"></label><label class="field"><span>Satış fiyatı (₺/kg)</span><input id="farmCostPrice" type="number" min="0" step="0.1" inputmode="decimal" value="0"></label><label class="field"><span>Kayıt yılı</span><select id="farmCostYear"><option value="ALL">Tüm yıllar</option></select></label></div><p class="cost-estimate-note">Gelir ve net sonuç yalnızca girilmiş verim/fiyat varsayımlarına dayanır; destek ve diğer gelirleri içermez.</p></section>
+    <section class="panel"><div class="panelhead"><div><h2>Gider dağılımı</h2><p>Kayıtlı giderlerin kategori payları.</p></div><span class="tag" id="farmCostCategoryCount">0 kategori</span></div><div id="farmCostCategoryBars" class="farm-cost-category-bars" aria-live="polite"></div></section>
+    <section class="panel"><div class="panelhead"><div><h2>Sezonluk gider kayıtları</h2><p id="farmCostRowsSummary" aria-live="polite">Kayıtlı giderler burada listelenir.</p></div><label class="field farm-cost-category-filter"><span class="sr-only">Gider kategorisini filtrele</span><select id="farmCostCategoryFilter"><option value="ALL">Tüm kategoriler</option></select></label></div><div class="tablewrap"><table class="farm-cost-table"><thead><tr><th>Tarih</th><th>Parsel</th><th>Kategori</th><th style="text-align:left">Açıklama</th><th>Tutar</th><th>İşlem</th></tr></thead><tbody id="farmCostRows"></tbody></table></div></section>
+    <details class="panel fertilizer-cost-details"><summary>Gübre fiyatları ve NPK maliyet hesabı</summary><p class="cost-estimate-note">Kayıtlı gübre fiyatlarını güncelle ve NPK hesabındaki tahmini maliyeti karşılaştır.</p>
     <section class="panel">
       <div class="panelhead"><div><h2>Gübre fiyatları</h2><p>Fiyatı ₺/kg, ₺/çuval (50 kg) ya da ₺/ton olarak girebilirsin.</p></div><span class="tag">HESAP KAYDI</span></div>
       <div class="tablewrap"><table><thead><tr><th>Gübre</th><th>Fiyat</th><th>Birim</th><th>₺/kg</th></tr></thead><tbody id="priceBody"></tbody></table></div>
@@ -262,6 +294,10 @@
       <div class="panelhead"><div><h2>Senaryo karşılaştırma</h2><p>Farklı gübre karışımlarını yan yana koy. Maliyetler güncel fiyatlarla hesaplanır.</p></div></div>
       <div class="tablewrap"><table><thead><tr><th>Senaryo</th><th>N/P₂O₅/K₂O</th><th>Gübre kg/da</th><th>₺/da</th><th>Toplam ₺</th><th>₺/kg besin</th><th>Fark ₺/da</th><th></th></tr></thead><tbody id="scenBody"></tbody></table></div>
     </section>
+    </details>
+    <div id="farmCostDialog" class="field-dialog-backdrop" hidden>
+      <section class="field-dialog farm-cost-dialog" role="dialog" aria-modal="true" aria-labelledby="farmCostDialogTitle" tabindex="-1"><header class="field-dialog-head"><div><div class="eyebrow">GİDER KAYDI</div><h2 id="farmCostDialogTitle">Yeni gider ekle</h2><p>Gider, seçtiğin parselin bulut kaydına bağlanır.</p></div><button class="icon-button" id="closeFarmCostForm" type="button" aria-label="Gider formunu kapat">×</button></header><form id="farmCostForm"><div class="formgrid"><div class="field"><label for="farmCostFormField">Parsel *</label><select id="farmCostFormField" required></select></div><div class="field"><label for="farmCostFormDate">Tarih *</label><input id="farmCostFormDate" type="date" required></div><div class="field"><label for="farmCostFormCategory">Gider türü *</label><select id="farmCostFormCategory" required></select></div><div class="field"><label for="farmCostFormAmount">Tutar (₺) *</label><input id="farmCostFormAmount" type="number" min="0.01" step="0.01" required inputmode="decimal" placeholder="Örn. 12500"></div><div class="field farm-cost-description"><label for="farmCostFormDescription">Açıklama</label><input id="farmCostFormDescription" maxlength="120" placeholder="Örn. taban gübresi, mazot"></div></div><div class="field-form-actions"><button class="primary" type="submit" id="saveFarmCostButton">＋ Gideri kaydet</button><button class="secondary" type="button" id="cancelFarmCostForm">Vazgeç</button></div></form></section>
+    </div>
   </section>
   <section class="view" id="view-weather">
     <div class="heading"><div><div class="eyebrow">WINDY · KONUM BAZLI DETAY</div><h1>Hava Durumu</h1><p id="weatherStatusPage" aria-live="polite">Windy haritasını konumunda açmak için GPS izni ver.</p></div><button class="primary weather-locate" type="button">⌖ Anlık konumumu göster</button></div>
@@ -309,6 +345,7 @@
 <nav class="mobilebar" id="mobilebar">
   <button class="active" data-view="dashboard"><span>⌂</span>Ana Sayfa</button>
   <button data-view="fields"><span>▧</span>Parsellerim</button>
+  <button data-view="costs"><span>₺</span>Maliyet</button>
   <button data-view="weather"><span>☼</span>Hava Durumu</button>
   <button data-view="ai"><span>✦</span>AI Asistan</button>
   <button data-view="profile"><span>◉</span>Profil</button>
@@ -318,6 +355,7 @@
 <script src="./supabase-config.js" defer></script>
 <script src="./cloud-storage.js" defer></script>
 <script src="./app.js" defer></script>
+<script src="./farm-costs.js" defer></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer crossorigin=""></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js" defer crossorigin=""></script>
 <script src="./field-map.js" defer></script>
