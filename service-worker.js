@@ -1,10 +1,11 @@
-const CACHE_NAME = "ekinvya-shell-v8";
+const CACHE_NAME = "ekinvya-shell-v9";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./aydinlatma.html",
   "./styles.css",
   "./app.js",
+  "./farm-costs.js",
   "./field-map.js",
   "./auth.js",
   "./supabase-config.js",
