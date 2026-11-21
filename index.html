@@ -1,331 +1,2742 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#173f32">
-<meta name="description" content="Ekinvya; parseller, tarımsal hesaplar ve konum tabanlı hava raporları için akıllı tarım asistanı.">
-<meta name="application-name" content="Ekinvya">
-<link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" href="./favicon.svg" type="image/svg+xml">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Ekinvya | Akıllı Tarım Asistanı</title>
-<link rel="stylesheet" href="./styles.css">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" crossorigin="">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ekinvya | Akıllı Tarım Asistanı</title>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet & Leaflet.draw -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js" crossorigin=""></script>
+
+  <!-- Turf.js (Geodesic Alan & Merkez Hesaplama) -->
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #F8FAFC;
+      color: #0F172A;
+    }
+
+    /* İnce kaydırma çubuğu */
+    .thin-scrollbar::-webkit-scrollbar {
+      height: 5px;
+      width: 5px;
+    }
+    .thin-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .thin-scrollbar::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: 9999px;
+    }
+
+    /* Leaflet kontrollerinin modalların üzerine taşmaması için */
+    .leaflet-container {
+      font-family: 'Inter', sans-serif;
+      z-index: 1;
+    }
+    .leaflet-top,
+    .leaflet-bottom {
+      z-index: 400 !important;
+    }
+
+    /* Range slider özelleştirme */
+    input[type="range"] {
+      accent-color: #15803D;
+    }
+  </style>
 </head>
-<body class="auth-pending">
-<div class="auth-loading" id="authLoading" role="status" aria-live="polite"><div><span class="auth-loading-mark" aria-hidden="true">✳</span><strong>Ekinvya</strong><p>Oturumun güvenle kontrol ediliyor…</p></div></div>
-<div class="app">
-<aside class="sidebar">
-  <div class="brand"><div class="brandmark">✳</div><div><strong>Ekinvya</strong><small>AKILLI TARIM ASİSTANI</small></div></div>
-  <div><div class="navlabel">Menü</div><nav class="nav" id="nav">
-    <button class="active" data-view="dashboard"><span class="ico">⌂</span> Ana Sayfa</button>
-    <button data-view="fields"><span class="ico">▧</span> Parsellerim <span class="nav-count" id="sidebarParcelBadge">0</span></button>
-    <button data-view="weather"><span class="ico">☼</span> Hava Durumu</button>
-    <button data-view="ai"><span class="ico">✦</span> AI Asistan</button>
-    <button data-view="profile"><span class="ico">◉</span> Profil</button>
-  </nav></div>
-  <div class="sidebottom"><strong>☁ Hesabına özel bulut kayıtları</strong>Parsel, maliyet, sezon ve NPK kayıtların giriş yaptığın hesabınla eşitlenir.</div>
-</aside>
-<main class="main">
-  <div class="topbar"><div class="crumb">Ekinvya <span style="padding:0 7px;color:#a9b6ac">/</span> <strong id="crumbTitle">Genel Bakış</strong></div><div class="topright"><div class="status" id="cloudStatus" data-state="pending" role="status" aria-live="polite" title="Bulut durumu"><span class="dot"></span><span id="cloudStatusText">Oturum bekleniyor</span></div><div class="avatar">E</div></div></div>
-  <section class="view active" id="view-dashboard">
-    <div class="heading"><div><div class="eyebrow">2026 / 2027 ÜRETİM SEZONU</div><h1>Tarımın kontrolü sende.</h1><p>Hesapla, takip et, maliyetini bil. Her şey tek menüde.</p></div><button class="primary" onclick="showView('npk')">＋ Yeni NPK hesabı</button></div>
-    <div class="stats">
-      <div class="stat"><div class="stat-top">Kayıtlı parsel sayısı <span class="stat-icon">▧</span></div><strong id="statFields">0</strong><small>Henüz parsel eklenmedi</small></div>
-      <div class="stat"><div class="stat-top">NPK hesapları <span class="stat-icon">◉</span></div><strong id="statCalcs">0</strong><small>Hesabına kaydedilmiş</small></div>
-      <div class="stat"><div class="stat-top">Toplam alan <span class="stat-icon">⌁</span></div><strong id="statArea">0 <small>da</small></strong><small>Parsel kayıtlarına göre</small></div>
-      <div class="stat"><div class="stat-top">Bu yıl maliyet <span class="stat-icon">₺</span></div><strong id="statCost">—</strong><small>Tüm tarlalar toplamı</small></div>
-    </div>
-        <section class="panel weather-home-panel"><div class="panelhead"><div><div class="eyebrow">YAKININDAKİ HAVA</div><h2>Konumundaki hava durumu</h2><p id="weatherStatusHome" aria-live="polite">Anlık hava ve 5 günlük tahmini görmek için konumunu paylaş.</p></div><button class="secondary weather-locate" type="button">⌖ Konumumu bul</button></div><div id="homeWeatherData" aria-live="polite"><div class="home-weather-current"><div class="home-weather-temp"><span class="home-weather-icon" aria-hidden="true">☼</span><div><strong>—°</strong><span class="home-weather-condition">Konum bekleniyor</span></div></div><div class="home-weather-grid"><div class="home-weather-metric"><span>Hissedilen</span><strong>—</strong></div><div class="home-weather-metric"><span>Nem</span><strong>—</strong></div><div class="home-weather-metric"><span>Rüzgâr</span><strong>—</strong></div><div class="home-weather-metric"><span>Yağış</span><strong>—</strong></div></div></div><div class="home-weather-days" aria-label="5 günlük hava tahmini"><div class="home-weather-day"><strong>Bugün</strong><span>—</span></div><div class="home-weather-day"><strong>Yarın</strong><span>—</span></div><div class="home-weather-day"><strong>Gün 3</strong><span>—</span></div><div class="home-weather-day"><strong>Gün 4</strong><span>—</span></div><div class="home-weather-day"><strong>Gün 5</strong><span>—</span></div></div></div><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px"><small class="weather-attribution">Tahmin kaynağı: <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" style="color:#dcebdc">Open-Meteo</a> · CC BY 4.0</small><button class="secondary" type="button" data-view="weather">Detaylı hava durumu →</button></div></section>
-    <div class="contentgrid dashboard-contentgrid">
-      <div class="leftcol">
-        <section class="panel dashboard-fields-panel">
-          <div class="panelhead"><div><div class="eyebrow">ARAZİ YÖNETİMİ</div><h2>Tarlalarım</h2><p>Parsel bilgilerin ve ekim kayıtların.</p></div><button class="primary" onclick="showView('fields')">＋ Tarla ekle</button></div>
-          <div id="dashboardFields" class="quicklist"><div class="quickitem"><div class="quickicon">▧</div><div><strong>Henüz tarla eklenmedi</strong><small>“Tarla ekle” ile ilk parselini kaydet.</small></div></div></div>
-        </section>
-        <section class="panel">
-          <div class="panelhead"><div><h2>Son hesaplamalar</h2><p>Hesabına kaydettiğin NPK hesapları.</p></div><button class="secondary" onclick="showView('reports')">Tüm kayıtlar →</button></div>
-          <div id="recentCalcs" class="quicklist"><div class="quickitem"><div class="quickicon">◉</div><div><strong>Henüz kayıt yok</strong><small>İlk hesabını yapıp kaydedebilirsin.</small></div></div></div>
-        </section>
+<body class="bg-[#F8FAFC] text-slate-900 antialiased selection:bg-emerald-100 selection:text-emerald-900">
+
+  <!-- Mobil Üst Bar -->
+  <header class="lg:hidden sticky top-0 z-30 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <div class="w-8 h-8 rounded-xl bg-emerald-700 text-white flex items-center justify-center shadow-xs">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
       </div>
-      <div class="rightcol">
-        <section class="panel"><div class="panelhead"><div><h2>Modüllerin</h2><p>Tarım işlerini tek noktadan yönet.</p></div></div>
-          <div class="modulegrid">
-            <button class="module" onclick="showView('fields')" style="text-align:left"><div class="micon">🌾</div><strong>Parseller</strong><small>Arazi ve ürün bilgileri</small><span class="soon" style="background:#e7f4eb;color:#1d6848">HAZIR</span></button>
-            <button class="module" onclick="showView('season')" style="text-align:left"><div class="micon">🌱</div><strong>Sezon takibi</strong><small>Sezon geçmişi, işlem defteri ve kârlılık</small><span class="soon" style="background:#e7f4eb;color:#1d6848">HAZIR</span></button>
-            <button class="module" onclick="showView('reports')" style="text-align:left"><div class="micon">🧮</div><strong>Kayıtlı hesaplar</strong><small>NPK kayıtları ve CSV</small><span class="soon" style="background:#e7f4eb;color:#1d6848">HAZIR</span></button>
-            <button class="module" onclick="showView('costs')" style="text-align:left"><div class="micon">💰</div><strong>Maliyet</strong><small>Gübre fiyatı ve TL/da</small><span class="soon" style="background:#e7f4eb;color:#1d6848">HAZIR</span></button>
-          </div>
-        </section>
-        <section class="panel"><div class="panelhead"><div><h2>Sonraki adımlar</h2><p>Ürünü sağlam temellerle büyütelim.</p></div></div>
-          <div class="quicklist">
-            <div class="quickitem"><div class="quickicon">✓</div><div><strong>Responsive arayüz</strong><small>Telefon ve masaüstü düzeni</small></div><span class="arrow">✓</span></div>
-            <div class="quickitem"><div class="quickicon">✓</div><div><strong>Canlı NPK hesabı</strong><small>Etiket oranı ve alan bazlı hesap</small></div><span class="arrow">✓</span></div>
-            <div class="quickitem"><div class="quickicon">☁</div><div><strong>Bulut senkronizasyonu</strong><small>Kayıtların giriş yaptığın hesapla eşitlenir</small></div><span class="arrow">→</span></div>
-          </div>
-        </section>
+      <div>
+        <div class="text-sm font-bold text-slate-900 leading-tight">Ekinvya</div>
+        <div class="text-[10px] font-medium text-emerald-700">Akıllı Tarım Asistanı</div>
       </div>
     </div>
-  </section>
-  <section class="view" id="view-npk"><div class="heading"><div><div class="eyebrow">HESAPLAMA MERKEZİ</div><h1>NPK Hesap Makinesi</h1><p>Gübreleri ekle, miktarları gir ve saf besin sonuçlarını hesapla.</p></div></div>        <section class="panel">
-          <div class="panelhead"><div><h2>Hızlı NPK hesaplama</h2><p>Gübre miktarını gir, saf besin değerlerini anında gör.</p></div><span class="tag">CANLI HESAP</span></div>
-          <div class="formgrid">
-            <div class="field"><label for="plant">Bitki / ürün</label><input id="plant" placeholder="Örn. Buğday" value="Buğday"></div>
-            <div class="field"><label for="area">Toplam arazi (da)</label><input id="area" type="text" inputmode="decimal" min="0.01" step="any" value="100"></div>
-          </div>
-          <div id="fertlist" class="fertlist"></div>
-          <button class="addrow" id="addFert">＋ Gübre ekle</button>
-          <div class="resultband">
-            <div class="resulttitle"><strong>Dekara saf besin</strong><span id="resultArea">100 da için hesaplanıyor</span></div>
-            <div class="nutrients">
-              <div class="nutrient"><div class="nlabel">AZOT</div><strong id="outN">0</strong><small>kg N / da</small></div>
-              <div class="nutrient"><div class="nlabel">FOSFOR</div><strong id="outP">0</strong><small>kg P₂O₅ / da</small></div>
-              <div class="nutrient"><div class="nlabel">POTASYUM</div><strong id="outK">0</strong><small>kg K₂O / da</small></div>
+
+    <button id="mobileMenuBtn" type="button" class="p-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50" aria-label="Menüyü Aç">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+  </header>
+
+  <!-- Mobil Menü Arka Plan Perdesi -->
+  <div id="sidebarBackdrop" class="hidden fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs lg:hidden"></div>
+
+  <div class="min-h-screen flex">
+    <!-- ===================================================================== -->
+    <!-- SOL SABİT MENÜ (SIDEBAR)                                              -->
+    <!-- ===================================================================== -->
+    <aside id="appSidebar" class="fixed lg:sticky top-0 left-0 z-50 h-screen w-64 bg-white border-r border-slate-200 flex flex-col justify-between transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-out shrink-0">
+      <div class="p-4 space-y-5">
+        <!-- Marka Logosu -->
+        <div class="flex items-center justify-between px-1 pt-1">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center shadow-xs">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
             </div>
-            <div class="resultfoot"><span>Toplam araziye gereken gübre: <b id="totalFert">0 kg</b></span><span id="elemental">P ve K elementel dönüşümü hazır</span></div>
-          </div>
-          <div class="tablewrap"><table><thead><tr><th>Gübre</th><th>kg/da</th><th>N</th><th>P₂O₅</th><th>K₂O</th></tr></thead><tbody id="resultRows"></tbody></table></div>
-          <div class="notice">Hesaplama, girilen gübre etiket değerlerine dayanır. NPK sonucu bir uygulama reçetesi değildir. Doz kararını toprak analizi, bitki gelişimi ve bölgesel önerilerle birlikte değerlendir.</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="primary" id="saveCalc">Hesabı kaydet</button><button class="secondary" id="exportCsv">CSV dışa aktar</button><button class="secondary" onclick="window.print()">Yazdır / PDF</button><button class="secondary" onclick="showView('costs')">Maliyet & fiyatlar</button><button class="secondary" onclick="showView('reports')">Kayıtlı hesaplar</button></div>
-        </section>
-</section>
-  <section class="view" id="view-fields">
-    <div class="heading field-inventory-heading"><div><div class="eyebrow">PARSEL ENVANTERİ</div><h1>Parsellerim</h1><p>Tarlalarını, ekili ürünleri ve uydu sınırlarını tek yerden takip et.</p></div><button class="primary" id="openFieldDialog" type="button"><span aria-hidden="true">＋</span> Yeni parsel</button></div>
-    <div class="field-kpis" aria-label="Parsel özeti">
-      <article class="field-kpi"><span>TOPLAM PARSEL</span><strong id="fieldCountTag">0</strong><small>Hesabına kayıtlı</small></article>
-      <article class="field-kpi"><span>ÜRETİM ALANI</span><strong id="fieldAreaTotal">0 da</strong><small id="fieldHectareTotal">0 ha toplam</small></article>
-      <article class="field-kpi"><span>UYDU SINIRI</span><strong id="fieldBoundaryCount">0 / 0</strong><small>GeoJSON sınırı kayıtlı</small></article>
-    </div>
-    <section class="field-filterbar" aria-label="Parsel arama ve filtreleme">
-      <label class="field-search"><span aria-hidden="true">⌕</span><span class="sr-only">Parsel veya mahalle ara</span><input id="fieldSearchInput" type="search" placeholder="Parsel veya mahalle ara…" autocomplete="off"></label>
-      <label class="field-filter"><span class="sr-only">Ürüne göre filtrele</span><select id="fieldCropFilter"><option value="ALL">Tüm ürünler</option><option>Buğday</option><option>Arpa</option><option>Kanola</option><option>Ayçiçeği</option><option>Mısır</option><option>Diğer</option></select></label>
-      <span class="field-season-chip">2026/2027 sezonu</span>
-    </section>
-    <div id="fieldsList" class="field-card-grid" aria-live="polite"></div>
-    <div id="fieldDialog" class="field-dialog-backdrop" hidden>
-      <section class="field-dialog" role="dialog" aria-modal="true" aria-labelledby="fieldDialogTitle" tabindex="-1">
-        <header class="field-dialog-head"><div><div class="eyebrow">PARSEL KAYDI</div><h2 id="fieldDialogTitle">Yeni parsel ekle</h2><p>Bilgileri gir, sınırı çiz; kayıt hesabınla bulutta eşitlenir.</p></div><button class="icon-button" id="closeFieldDialog" type="button" aria-label="Pencereyi kapat">×</button></header>
-        <section class="panel field-map-panel" aria-labelledby="boundaryHeading">
-          <div class="panelhead"><div><div class="eyebrow">SENTINEL‑2 · PARSEL SINIRI</div><h3 id="boundaryHeading">Haritada tarla sınırını çiz</h3><p>Alan poligondan yaklaşık hesaplanır. Yeni parsel kaydında GeoJSON sınırı da saklanır.</p></div><span class="tag">10 M UYDU VERİSİ</span></div>
-          <div class="field-map-tools">
-            <div class="field"><label for="boundaryFieldSelect">Sınır seçimi</label><select id="boundaryFieldSelect"><option value="new">Yeni parsel formuna bağla</option></select></div>
-            <form id="mapPlaceSearch" class="map-place-search" role="search"><label class="sr-only" for="mapPlaceQuery">Mahalle veya köy ara</label><input id="mapPlaceQuery" type="search" maxlength="120" placeholder="Mahalle / köy ara" autocomplete="off"><button class="secondary" type="submit">Haritada bul</button></form>
-            <button class="secondary map-locate" id="mapLocate" type="button">◎ Konumuma git</button>
-            <p id="boundaryStatus" role="status" aria-live="polite">Yeni parsel formu için sınır çizebilirsin.</p>
-          </div>
-          <div id="fieldBoundaryMap" class="field-boundary-map" role="application" aria-label="Tarla sınırı çizim haritası"></div>
-          <p class="map-footnote">Esri World Imagery uydu görüntüsü varsayılandır; katman menüsünden OpenStreetMap’i seçebilirsin. Yer araması © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap katkıcıları</a>. NDVI verisi Sentinel‑2 L2A’dan alınır.</p>
-        </section>
-        <section class="panel field-form-panel" id="fieldFormPanel"><div class="panelhead"><div><h3>Parsel bilgileri</h3><p>Yıldızlı alanlar zorunludur.</p></div></div>
-          <form id="fieldForm">
-            <div class="formgrid">
-              <div class="field"><label for="fieldName">Tarla / parsel adı *</label><input id="fieldName" required maxlength="80" placeholder="Örn. Kırkgöz kuzey parseli"></div>
-              <div class="field"><label for="fieldArea">Alan (dekar) *</label><input id="fieldArea" required type="text" inputmode="decimal" placeholder="Poligon çizilince hesaplanır"></div>
-              <div class="field"><label for="fieldAda">Ada</label><input id="fieldAda" maxlength="20" placeholder="Örn. 112"></div><div class="field"><label for="fieldParsel">Parsel</label><input id="fieldParsel" maxlength="20" placeholder="Örn. 15"></div><div class="field"><label for="fieldCrop">Ekilmiş / planlanan ürün</label><select id="fieldCrop"><option value="">Seçiniz</option><option>Buğday</option><option>Arpa</option><option>Kanola</option><option>Ayçiçeği</option><option>Mısır</option><option>Diğer</option></select></div>
-              <div class="field"><label for="fieldLocation">Konum / mahalle</label><input id="fieldLocation" maxlength="120" placeholder="Örn. Tekirdağ, Karaevli"></div>
-              <div class="field"><label for="fieldSeason">Üretim sezonu</label><select id="fieldSeason"><option>2026/2027</option><option>2027</option><option>2025/2026</option></select></div>
-              <div class="field"><label for="fieldNotes">Not</label><input id="fieldNotes" maxlength="250" placeholder="Toprak, kira, gözlem vb."></div>
+            <div>
+              <div class="text-sm font-extrabold text-slate-900 tracking-tight">Ekinvya</div>
+              <div class="text-[11px] font-semibold text-emerald-700">Akıllı Tarım Asistanı</div>
             </div>
-            <div class="field-form-actions"><button class="primary" id="saveFieldButton" type="submit">＋ Tarlayı kaydet</button><button class="secondary" type="reset">Formu temizle</button></div>
+          </div>
+
+          <button id="closeSidebarBtn" type="button" class="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100">
+            ✕
+          </button>
+        </div>
+
+        <!-- Çiftlik Çalışma Alanı Etiketi -->
+        <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-600 shrink-0"></span>
+            <span class="text-xs font-bold text-slate-900 truncate">Eligül Çiftliği</span>
+          </div>
+          <div class="text-[11px] text-slate-500 mt-0.5 pl-4">Üretim çalışma alanı</div>
+        </div>
+
+        <!-- Ana Navigasyon Sekmeleri -->
+        <div class="space-y-1">
+          <div class="px-2 pb-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase">ÇALIŞMA ALANI</div>
+
+          <button type="button" data-nav="parsellerim" class="sidebar-nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80 transition cursor-pointer">
+            <span class="flex items-center gap-2.5">
+              <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+              Parsellerim
+            </span>
+            <span id="sidebarParcelBadge" class="text-[11px] font-bold bg-emerald-700 text-white px-2 py-0.5 rounded-md">3</span>
+          </button>
+
+          <button type="button" data-nav="maliyet-tablosu" class="sidebar-nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition cursor-pointer">
+            <span class="flex items-center gap-2.5">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              Maliyet Tablosu
+            </span>
+            <span class="text-[11px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-md">₺</span>
+          </button>
+
+          <button type="button" data-nav="hava-durumu" class="sidebar-nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition cursor-pointer">
+            <span class="flex items-center gap-2.5">
+              <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+              </svg>
+              Hava Durumu
+            </span>
+            <span class="text-[11px] font-semibold text-emerald-700">17°C</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Alt Bilgi Kartı -->
+      <div class="p-4 border-t border-slate-100 space-y-3">
+        <div class="bg-emerald-50/70 border border-emerald-200/70 rounded-xl p-3">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold text-emerald-900">Sentinel-2 L2A</span>
+            <span class="text-[10px] font-bold bg-emerald-700 text-white px-1.5 py-0.5 rounded">10m Aktif</span>
+          </div>
+          <p class="text-[11px] text-emerald-800/80 mt-1 leading-relaxed">
+            Son bulutsuz geçiş: <strong>16.11.2026</strong> • Tekirdağ / Karaevli
+          </p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===================================================================== -->
+    <!-- ANA İÇERİK ALANI                                                      -->
+    <!-- ===================================================================== -->
+    <main class="flex-1 min-w-0">
+
+      <!-- =================================================================== -->
+      <!-- GÖRÜNÜM 1: PARSELLERİM (ENVANTER VE YENİ PARSEL EKLEME)             -->
+      <!-- =================================================================== -->
+      <section id="viewParcels" class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+        <!-- Üst Başlık & + Yeni Parsel Butonu -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div class="text-[11px] font-bold tracking-wider text-emerald-700 uppercase">PARSEL ENVANTERİ</div>
+            <h1 class="text-2xl sm:text-[26px] font-bold text-slate-900 tracking-tight mt-0.5">Parsellerim</h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+              İşletmenize kayıtlı tarlalar, aktif üretim sezonları ve uydu sınır doğrulamaları
+            </p>
+          </div>
+
+          <button id="openNewParcelModalBtn" type="button" class="inline-flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xs transition cursor-pointer self-start sm:self-auto">
+            <span class="text-base leading-none">+</span>
+            Yeni Parsel
+          </button>
+        </div>
+
+        <!-- 3 Özet KPI Kartı -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">TOPLAM PARSEL</span>
+              <span class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center text-xs font-bold">#</span>
+            </div>
+            <div id="kpiTotalParcels" class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">3 Parsel</div>
+            <div id="kpiActiveSub" class="text-xs text-slate-500 mt-1">3 aktif • 0 bekleyen</div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">ÜRETİM ALANI</span>
+              <span class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center text-xs font-bold">da</span>
+            </div>
+            <div id="kpiTotalArea" class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">178,8 da</div>
+            <div id="kpiTotalHectare" class="text-xs text-slate-500 mt-1">17,88 ha toplam</div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">UYDU & KONUM</span>
+              <span class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center text-xs font-bold">✓</span>
+            </div>
+            <div id="kpiVerifiedCount" class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">3 / 3</div>
+            <div class="text-xs text-emerald-700 font-medium mt-1">Tüm sınırlar doğrulandı</div>
+          </div>
+        </div>
+
+        <!-- Arama ve Filtreleme Çubuğu -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-xs">
+          <div class="relative flex-1">
+            <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+            </svg>
+            <input id="parcelSearchInput" type="text" placeholder="Parsel veya mahalle ara..." class="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:border-emerald-600" />
+          </div>
+
+          <div class="flex items-center gap-2">
+            <select id="parcelCropFilter" class="text-xs sm:text-sm font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600 cursor-pointer">
+              <option value="ALL">Tüm Ürünler</option>
+              <option value="Buğday">Buğday</option>
+              <option value="Kanola">Kanola</option>
+              <option value="Ayçiçeği">Ayçiçeği</option>
+              <option value="Arpa">Arpa</option>
+              <option value="Mısır">Mısır</option>
+            </select>
+
+            <span class="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl whitespace-nowrap">
+              2026/2027 Sezonu
+            </span>
+          </div>
+        </div>
+
+        <!-- Parsel Kartları Izgarası -->
+        <div id="parcelCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- GÖRÜNÜM 2: PARSEL DETAY SAYFASI                                     -->
+      <!-- =================================================================== -->
+      <section id="viewParcelDetail" class="hidden max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-5">
+        <!-- Üst Geri Dönüş ve Düzenle Butonları -->
+        <div class="flex items-center justify-between gap-3">
+          <button id="backToParcelsBtn" type="button" class="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl shadow-xs transition cursor-pointer">
+            <span>←</span>
+            <span>Parsellerim</span>
+          </button>
+
+          <button id="openEditParcelModalBtn" type="button" class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 px-3.5 py-2 rounded-xl shadow-xs transition cursor-pointer">
+            <span>✎</span>
+            <span>Parseli Düzenle</span>
+          </button>
+        </div>
+
+        <!-- Parsel Başlık Kartı & 4 Özet KPI -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3.5">
+              <div id="detailMiniSvgBox" class="w-14 h-14 rounded-xl bg-slate-900 flex items-center justify-center p-1.5 shrink-0 border border-slate-800"></div>
+              <div>
+                <div class="text-[10px] font-bold tracking-wider text-emerald-700 uppercase">AKTİF ÜRETİM PARSELİ</div>
+                <h1 id="detailTitle" class="text-xl sm:text-2xl font-extrabold text-slate-900">çiftlik arkası</h1>
+                <div id="detailSubtitle" class="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1"></div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 self-start sm:self-center">
+              <span class="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1.5 rounded-xl">
+                <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+                Konum Kayıtlı
+              </span>
+            </div>
+          </div>
+
+          <!-- 4 Özet KPI Kutusu -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+            <div class="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3">
+              <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">ÜRETİM ALANI</div>
+              <div id="detailKpiArea" class="text-base sm:text-lg font-extrabold text-slate-900 mt-1">56,3 da</div>
+              <div id="detailKpiSoil" class="text-[11px] text-slate-500 mt-0.5">Tınlı Toprak</div>
+            </div>
+
+            <div class="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3">
+              <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">EKİLİ ÜRÜN</div>
+              <div id="detailKpiCrop" class="text-base sm:text-lg font-extrabold text-slate-900 mt-1">Buğday</div>
+              <div id="detailKpiSowing" class="text-[11px] text-slate-500 mt-0.5">Ekim: 15.11.2026</div>
+            </div>
+
+            <div class="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3">
+              <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">CANLILIK (NDVI)</div>
+              <div id="detailKpiNdvi" class="text-base sm:text-lg font-extrabold text-emerald-700 mt-1">0.17</div>
+              <div id="detailKpiPassDate" class="text-[11px] text-slate-500 mt-0.5">Geçiş: 16.11.2026</div>
+            </div>
+
+            <div class="bg-slate-50/80 border border-slate-200/80 rounded-xl p-3">
+              <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">HAVA & İLAÇLAMA</div>
+              <div class="text-base sm:text-lg font-extrabold text-slate-900 mt-1">17°C <span class="text-xs font-bold text-emerald-700">• Uygun</span></div>
+              <div class="text-[11px] text-slate-500 mt-0.5">Rüzgar 15 km/s</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alt Sekmeler (Sub-Navigation Pills) -->
+        <div class="flex items-center gap-2 overflow-x-auto thin-scrollbar pb-1">
+          <button type="button" data-subtab="all" class="detail-subtab-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-white whitespace-nowrap cursor-pointer transition">
+            Tüm Görünüm
+          </button>
+          <button type="button" data-subtab="health" class="detail-subtab-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 whitespace-nowrap cursor-pointer transition">
+            Bitki Sağlığı
+          </button>
+          <button type="button" data-subtab="boundary" class="detail-subtab-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 whitespace-nowrap cursor-pointer transition">
+            Harita & Sınır
+          </button>
+          <button type="button" data-subtab="costs" class="detail-subtab-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 whitespace-nowrap cursor-pointer transition">
+            Maliyet Tablosu
+          </button>
+        </div>
+
+        <!-- PARSEL KONUMU VE SINIRI BARI -->
+        <div id="detailBoundaryBlock" class="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-slate-900">Parsel Konumu ve Sınırı</div>
+              <div id="detailCoordsText" class="text-[11px] text-slate-500 mt-0.5">41.064158, 27.684434 merkez koordinatı • Uydu haritası aşağıda aktiftir</div>
+            </div>
+          </div>
+
+          <button id="toggleVertexEditBtn" type="button" class="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 px-3.5 py-2 rounded-xl transition cursor-pointer self-start sm:self-auto">
+            <span>✎</span>
+            <span id="toggleVertexEditLabel">Sınırı Düzenle</span>
+          </button>
+        </div>
+
+        <!-- BÖLGESEL HAVA DURUMU KARTI -->
+        <div id="detailWeatherBlock" class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">Bölgesel Hava Durumu</h2>
+              <p id="detailWeatherLoc" class="text-[11px] text-slate-500">Karaevli / Tekirdağ • 5 Günlük Tarımsal Tahmin</p>
+            </div>
+            <span class="text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-200 px-2.5 py-1 rounded-full">
+              Parçalı Bulutlu
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-center">
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5">
+              <div class="text-2xl font-extrabold text-slate-900">17°C</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">En Yüksek 17° • En Düşük 11°</div>
+            </div>
+
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5">
+              <div class="text-[10px] font-bold text-slate-400 uppercase">YAĞIŞ</div>
+              <div class="text-sm font-extrabold text-slate-900 mt-1">7.7 mm</div>
+              <div class="text-[11px] text-sky-700 font-medium mt-0.5">Bugün • %55 ihtimal</div>
+            </div>
+
+            <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5">
+              <div class="text-[10px] font-bold text-slate-400 uppercase">RÜZGAR</div>
+              <div class="text-sm font-extrabold text-slate-900 mt-1">15 km/s</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">Kuzeydoğu • Sakin</div>
+            </div>
+
+            <div class="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5">
+              <div class="text-[10px] font-bold text-emerald-800 uppercase">İLAÇLAMA</div>
+              <div class="text-sm font-extrabold text-emerald-800 mt-1">Uygun</div>
+              <div class="text-[11px] text-emerald-700 mt-0.5">Sabah / Akşam saatleri</div>
+            </div>
+          </div>
+
+          <!-- 5 Günlük Hava & Yağış Tahmini -->
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-[11px]">
+              <span class="font-bold text-slate-700">5 Günlük Hava & Yağış Tahmini</span>
+              <span class="font-semibold text-sky-700">5 Gün Toplam: 11.2 mm</span>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-center">
+              <div class="bg-sky-50/80 border border-sky-200 rounded-xl p-2.5">
+                <div class="text-[11px] font-bold text-slate-900">Bugün</div>
+                <div class="text-[10px] text-slate-500">21.11</div>
+                <div class="text-xs font-extrabold text-slate-900 mt-1.5">17° / 11°</div>
+                <div class="text-[11px] font-bold text-sky-700 mt-1">7.7 mm • %55</div>
+              </div>
+              <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+                <div class="text-[11px] font-bold text-slate-700">Yarın</div>
+                <div class="text-[10px] text-slate-500">22.11</div>
+                <div class="text-xs font-extrabold text-slate-900 mt-1.5">15° / 8°</div>
+                <div class="text-[11px] font-medium text-slate-500 mt-1">0 mm • %10</div>
+              </div>
+              <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+                <div class="text-[11px] font-bold text-slate-700">Pzt</div>
+                <div class="text-[10px] text-slate-500">23.11</div>
+                <div class="text-xs font-extrabold text-slate-900 mt-1.5">14° / 7°</div>
+                <div class="text-[11px] font-semibold text-sky-700 mt-1">3.5 mm • %40</div>
+              </div>
+              <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5">
+                <div class="text-[11px] font-bold text-slate-700">Sal</div>
+                <div class="text-[10px] text-slate-500">24.11</div>
+                <div class="text-xs font-extrabold text-slate-900 mt-1.5">12° / 5°</div>
+                <div class="text-[11px] font-medium text-slate-500 mt-1">0 mm • %5</div>
+              </div>
+              <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 col-span-2 sm:col-span-1">
+                <div class="text-[11px] font-bold text-slate-700">Çar</div>
+                <div class="text-[10px] text-slate-500">25.11</div>
+                <div class="text-xs font-extrabold text-slate-900 mt-1.5">13° / 6°</div>
+                <div class="text-[11px] font-medium text-slate-500 mt-1">0 mm • %10</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- BİTKİ CANLILIĞI (SENTINEL-2 10m) KARTI                            -->
+        <!-- ================================================================= -->
+        <div id="detailSatelliteBlock" class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 id="satelliteCardTitle" class="text-sm font-bold text-slate-900">Bitki Canlılığı (NDVI)</h2>
+              <p id="satelliteCardSub" class="text-[11px] text-slate-500">çiftlik arkası • Buğday • Sentinel-2 (10m)</p>
+            </div>
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-1 rounded-full self-start sm:self-auto">
+              <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+              Sentinel-2
+            </span>
+          </div>
+
+          <!-- 5 Spektral İndeks Sekmesi -->
+          <div class="flex items-center gap-2 overflow-x-auto thin-scrollbar pb-1">
+            <button type="button" data-index="NDVI" class="spectral-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-700 text-white whitespace-nowrap cursor-pointer transition">
+              Canlılık (NDVI)
+            </button>
+            <button type="button" data-index="NDWI" class="spectral-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200/70 whitespace-nowrap cursor-pointer transition">
+              Su Stresi (NDWI)
+            </button>
+            <button type="button" data-index="NDRE" class="spectral-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200/70 whitespace-nowrap cursor-pointer transition">
+              Azot (NDRE)
+            </button>
+            <button type="button" data-index="SAVI" class="spectral-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200/70 whitespace-nowrap cursor-pointer transition">
+              Erken Çıkış (SAVI)
+            </button>
+            <button type="button" data-index="BSI" class="spectral-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200/70 whitespace-nowrap cursor-pointer transition">
+              Çıplak Toprak (BSI)
+            </button>
+          </div>
+
+          <!-- İnteraktif Uydu Haritası -->
+          <div class="relative rounded-2xl overflow-hidden border border-slate-200">
+            <div id="detailSatelliteMap" class="w-full h-[340px] sm:h-[380px]"></div>
+            <div class="absolute top-3 right-3 z-[450] bg-white/95 backdrop-blur-xs border border-slate-200 px-3 py-1.5 rounded-xl text-[11px] font-bold text-slate-800 shadow-xs">
+              Harita & <span id="mapBadgeIndexName">Canlılık</span>
+            </div>
+          </div>
+
+          <!-- Dairesel Ortalama İndeks Göstergesi -->
+          <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <!-- Dairesel SVG Gauge -->
+              <div class="relative w-16 h-16 shrink-0">
+                <svg class="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
+                  <circle cx="32" cy="32" r="26" stroke="#E2E8F0" stroke-width="6" fill="none" />
+                  <circle id="ndviGaugeCircle" cx="32" cy="32" r="26" stroke="#EF4444" stroke-width="6" stroke-linecap="round" fill="none" stroke-dasharray="163.36" stroke-dashoffset="135" />
+                </svg>
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                  <span id="ndviGaugeText" class="text-xs font-extrabold text-slate-900">0.17</span>
+                  <span id="ndviGaugeCode" class="text-[9px] font-bold text-slate-400">NDVI</span>
+                </div>
+              </div>
+
+              <div>
+                <div id="ndviSummaryLabel" class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">PARSEL ORTALAMA NDVI</div>
+                <div class="flex items-baseline gap-2 mt-0.5">
+                  <span id="ndviBigScore" class="text-2xl font-extrabold text-slate-900">0.17</span>
+                  <span id="ndviScoreUnit" class="text-xs font-medium text-slate-500">(-1 ile +1)</span>
+                </div>
+                <div id="ndviPassMeta" class="text-[11px] text-slate-500 mt-0.5">Geçiş: 16.11.2026 • Parsel içi Bulut: %0</div>
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:items-end gap-1">
+              <span id="ndviStatusPill" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                Düşük Biyokütle / Nadas
+              </span>
+              <span id="ndviDeltaText" class="text-[11px] font-medium text-slate-500">Önceki geçişe göre stabil</span>
+            </div>
+          </div>
+
+          <!-- Parsel Durum Haritası & Renk Skalası Çubuğu -->
+          <div class="border border-slate-200 rounded-2xl p-4 space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="text-xs font-bold text-slate-900">Parsel Durum Haritası</div>
+                <div id="pixelCountSubtitle" class="text-[11px] text-slate-500">563 piksel • 10m × 10m Sentinel-2 gerçek piksel analizi</div>
+              </div>
+            </div>
+
+            <!-- Renk Skalası ve Konum İşaretçisi -->
+            <div class="space-y-1.5 pt-2">
+              <div class="relative">
+                <div id="scalePointer" style="left: 17%;" class="absolute -top-6 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs transition-all duration-300">
+                  0.17
+                </div>
+                <div class="h-2.5 w-full rounded-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-600"></div>
+              </div>
+              <div class="flex items-center justify-between text-[10px] font-semibold text-slate-500">
+                <span>Toprak / Zayıf</span>
+                <span>Orta Gelişim</span>
+                <span>Yoğun Yeşil Örtü</span>
+              </div>
+            </div>
+
+            <!-- Alanın Dağılımı -->
+            <div class="space-y-2.5 pt-1">
+              <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">ALANIN DAĞILIMI</div>
+
+              <div class="h-3 w-full rounded-full overflow-hidden flex bg-slate-100">
+                <div id="distBarHigh" style="width: 0%" class="bg-emerald-600 transition-all duration-300"></div>
+                <div id="distBarMid" style="width: 5%" class="bg-amber-400 transition-all duration-300"></div>
+                <div id="distBarLow" style="width: 95%" class="bg-rose-500 transition-all duration-300"></div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                <div class="bg-emerald-50/60 border border-emerald-200/80 rounded-xl p-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-emerald-900">1. Gür Yeşil</span>
+                    <span id="distPctHigh" class="text-xs font-extrabold text-emerald-700">%0</span>
+                  </div>
+                  <div id="distAreaHigh" class="text-[11px] text-emerald-800/80 mt-1">0,0 da</div>
+                </div>
+
+                <div class="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-amber-900">2. Gelişen</span>
+                    <span id="distPctMid" class="text-xs font-extrabold text-amber-700">%5</span>
+                  </div>
+                  <div id="distAreaMid" class="text-[11px] text-amber-800/80 mt-1">2,8 da</div>
+                </div>
+
+                <div class="bg-rose-50/60 border border-rose-200/80 rounded-xl p-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-rose-900">3. Zayıf / Seyrek</span>
+                    <span id="distPctLow" class="text-xs font-extrabold text-rose-700">%95</span>
+                  </div>
+                  <div id="distAreaLow" class="text-[11px] text-rose-800/80 mt-1">53,5 da</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hassas Tarım Önerileri -->
+            <div id="agronomyAdviceContainer" class="space-y-2 pt-1"></div>
+          </div>
+
+          <!-- 12 Bulutsuz Uydu Geçiş Geçmişi -->
+          <div class="space-y-2.5">
+            <div>
+              <div class="text-xs font-bold text-slate-900">Bulutsuz Uydu Geçiş Geçmişi (Son 6 Ay • 12 Geçiş)</div>
+              <p class="text-[11px] text-slate-500">Geçmiş bir tarihi seçtiğinizde harita, skor ve piksel dağılımı o tarihe göre değişir (GG.AA.YYYY)</p>
+            </div>
+
+            <div id="satellitePassesGrid" class="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-12 gap-2"></div>
+          </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- PARSEL BAZLI MALİYET TABLOSU MODÜLÜ                               -->
+        <!-- ================================================================= -->
+        <div id="detailCostsBlock" class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">Parsel Maliyet Tablosu & Kârlılık Analizi</h2>
+              <p id="detailCostSubtitle" class="text-[11px] text-slate-500">Sezonluk girdi giderleri, net kâr ve başabaş verim noktası</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" id="detailExportCsvBtn" class="inline-flex items-center gap-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3 py-2 rounded-xl transition cursor-pointer">
+                <span>↓</span>
+                <span>Excel / CSV İndir</span>
+              </button>
+              <button type="button" id="detailAddExpenseBtn" class="inline-flex items-center gap-1.5 text-xs font-semibold bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-xl shadow-xs transition cursor-pointer">
+                <span>+</span>
+                <span>Yeni Gider Ekle</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 4 Finansal KPI -->
+          <div id="detailCostKpis" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"></div>
+
+          <!-- Verim & Fiyat Simülatörü -->
+          <div id="detailCostSimulator" class="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3"></div>
+
+          <!-- Kategori Dağılım Çubuğu -->
+          <div id="detailCostBreakdown" class="border border-slate-200 rounded-2xl p-4 space-y-3"></div>
+
+          <!-- Gider Kayıtları Tablosu -->
+          <div class="space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <span class="text-xs font-bold text-slate-800">Parsel Gider Kayıtları</span>
+              <select id="detailCostCatFilter" class="text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-xl px-3 py-1.5 focus:outline-none focus:border-emerald-600 cursor-pointer">
+                <option value="ALL">Tüm Kategoriler</option>
+                <option value="Tohum">Tohum</option>
+                <option value="Gübre">Gübre</option>
+                <option value="İlaç">İlaç</option>
+                <option value="Mazot & İşçilik">Mazot & İşçilik</option>
+                <option value="Hasat">Hasat</option>
+                <option value="Kira/Diğer">Kira/Diğer</option>
+              </select>
+            </div>
+
+            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 border-b border-slate-200 text-[10px] font-bold tracking-wider text-slate-500 uppercase">
+                    <th class="py-2.5 px-3">Tarih</th>
+                    <th class="py-2.5 px-3">Kategori</th>
+                    <th class="py-2.5 px-3">Açıklama</th>
+                    <th class="py-2.5 px-3 text-right">Dekar Başı (₺/da)</th>
+                    <th class="py-2.5 px-3 text-right">Toplam (₺)</th>
+                    <th class="py-2.5 px-3 text-right">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody id="detailCostTableBody" class="divide-y divide-slate-100 text-xs"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- BU PARSELE ÖZEL ZİRAAT AI ASİSTANI                                -->
+        <!-- ================================================================= -->
+        <div id="detailAiBlock" class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-xl bg-emerald-700 text-white flex items-center justify-center text-xs font-bold">
+                AI
+              </div>
+              <div>
+                <h2 class="text-sm font-bold text-slate-900">Bu Parsele Özel Ziraat AI Asistanı</h2>
+                <p class="text-[11px] text-slate-500">Uydu indeksleri, hava durumu ve maliyet verilerine göre agronomik yorum alın</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hazır Hızlı Danışma Soruları -->
+          <div class="space-y-1.5">
+            <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">HIZLI DANIŞMA KONULARI</div>
+            <div class="grid grid-cols-1 gap-2">
+              <button type="button" data-aiprompt="ndvi" class="ai-preset-btn text-left px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 text-xs font-medium text-slate-700 hover:text-emerald-900 flex items-center justify-between transition cursor-pointer">
+                <span>Parselimin NDVI canlılık skorunu ve bitki gelişim durumunu analiz et</span>
+                <span class="text-slate-400">→</span>
+              </button>
+              <button type="button" data-aiprompt="weather" class="ai-preset-btn text-left px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 text-xs font-medium text-slate-700 hover:text-emerald-900 flex items-center justify-between transition cursor-pointer">
+                <span>Mevcut hava ve rüzgar koşullarına göre ilaçlama / gübreleme önerisi ver</span>
+                <span class="text-slate-400">→</span>
+              </button>
+              <button type="button" data-aiprompt="profit" class="ai-preset-btn text-left px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 text-xs font-medium text-slate-700 hover:text-emerald-900 flex items-center justify-between transition cursor-pointer">
+                <span>Güncel maliyet tablosu ve başabaş verim noktasına göre kârlılık analizi yap</span>
+                <span class="text-slate-400">→</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Özel Soru Inputu -->
+          <form id="aiCustomForm" class="flex items-center gap-2">
+            <input id="aiCustomInput" type="text" placeholder="Bu parsele özel sorunuzu yazın (Örn: Üst gübreleme için en uygun dönem nedir?)" class="flex-1 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:bg-white focus:border-emerald-600" />
+            <button type="submit" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl transition cursor-pointer shrink-0">
+              Sor
+            </button>
           </form>
-        </section>
-      </section>
-    </div>
-  </section>
-  <section class="view" id="view-ndvi">
-    <div class="heading"><div><div class="eyebrow">COPERNICUS SENTINEL‑2 L2A</div><h1>Tarla NDVI analizi</h1><p id="ndviFieldTitle">Seçili parsel için bulutsuz NDVI gözlemleri.</p></div><button class="secondary" type="button" onclick="showView('fields')">← Parsellerime dön</button></div>
-    <section class="panel"><div class="panelhead"><div><h2>Analiz dönemi</h2><p>NDVI, yakın kızılötesi ve kırmızı bantlardan hesaplanır; bulut ve bulut gölgesi pikselleri elenir.</p></div><span class="tag">SENTINEL‑2 L2A</span></div>
-      <form id="ndviForm" class="ndvi-controls"><div class="field"><label for="ndviFrom">Başlangıç</label><input id="ndviFrom" type="date" required></div><div class="field"><label for="ndviTo">Bitiş</label><input id="ndviTo" type="date" required></div><button class="primary" type="submit" id="ndviRun">Uydu verisini getir</button></form>
-      <p id="ndviStatus" class="ndvi-status" role="status" aria-live="polite">Analiz için tarih aralığı seç.</p><div id="ndviResults" class="ndvi-results"></div>
-      <p class="map-footnote">NDVI, bitki örtüsünün spektral yansımasından türetilen bir göstergedir; tek başına verim veya hastalık teşhisi değildir. Bulutluluk ve uydu geçiş sıklığı nedeniyle bazı tarih aralıklarında geçerli gözlem çıkmayabilir.</p>
-    </section>
-  </section>
-  <section class="view" id="view-season">
-    <div class="workflow-strip" aria-label="Tarla yönetimi akışı">
-      <button type="button" onclick="showView('dashboard')"><span>01</span> Ana Sayfa</button>
-      <span>›</span><button type="button" onclick="showView('fields')"><span>02</span> Tarla Detayı</button>
-      <span>›</span><button type="button" onclick="showView('season')"><span>03</span> Sezon Geçmişi</button>
-      <span>›</span><button type="button" onclick="focusDiary()"><span>04</span> İşlem Defteri</button>
-      <span>›</span><button type="button" onclick="focusProfit()"><span>05</span> Maliyet ve Kârlılık</button>
-    </div>
-    <div id="seasonList">
-      <div class="heading"><div><div class="eyebrow">ÜRETİM GÜNLÜĞÜ</div><h1>Tarla giderleri</h1><p>Bir tarla seç. Giderini ekle. Dekar maliyetini anında gör.</p></div><button class="primary" data-view="fields" onclick="showView(this.dataset.view)">＋ Tarla ekle</button></div>
-      <section class="panel">
-        <div class="panelhead"><div><h2>Yeni tarla ekle</h2><p>Kayıttan sonra doğrudan maliyet girişine geçersin.</p></div><span class="tag">HESAP KAYDI</span></div>
-        <form id="seasonFieldForm"><div class="formgrid">
-          <div class="field"><label for="sfName">Tarla adı *</label><input id="sfName" maxlength="80" placeholder="Örn. Yol üstü tarla"></div>
-          <div class="field"><label for="sfArea">Dekar *</label><input id="sfArea" inputmode="decimal" placeholder="Örn. 25"></div>
-          <div class="field"><label for="sfAda">Ada</label><input id="sfAda" maxlength="20" placeholder="Örn. 112"></div>
-          <div class="field"><label for="sfParsel">Parsel</label><input id="sfParsel" maxlength="20" placeholder="Örn. 15"></div>
-        </div><div style="margin-top:16px"><button class="primary" type="submit">＋ Tarlayı kaydet</button></div></form>
-      </section>
-      <section class="panel"><div class="panelhead"><div><h2>Tarlalarım</h2><p>Gider girmek istediğin tarlayı seç.</p></div></div><div id="seasonFields" class="quicklist"></div></section>
-    </div>
-    <div id="seasonDetail" hidden>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"><button class="secondary" onclick="closeField()">← Tarlalara dön</button><button class="secondary" onclick="window.print()">Yazdır / PDF</button></div>
-      <section class="panel">
-        <div class="panelhead"><div><h2 id="sdTitle"></h2><p id="sdSub"></p></div><span class="tag">TARLA DETAYI</span></div>
-        <div class="resultband" style="margin-top:0"><div class="nutrients">
-          <div class="nutrient"><div class="nlabel">YILLIK MALİYET</div><strong id="sdTotal">0</strong><small>seçili yıl</small></div>
-          <div class="nutrient"><div class="nlabel">DEKARA MALİYET</div><strong id="sdPer">0</strong><small>₺ / da</small></div>
-          <div class="nutrient"><div class="nlabel">KAYIT</div><strong id="sdCount">0</strong><small>maliyet kalemi</small></div>
-        </div></div>
-      </section>
-      <div class="workflow-strip detail-flow" aria-label="Seçili tarla akışı">
-        <button type="button" onclick="showView('dashboard')"><span>01</span> Ana Sayfa</button><span>›</span>
-        <button type="button" onclick="showView('fields')"><span>02</span> Tarla Detayı</button><span>›</span>
-        <button type="button" onclick="focusSeasonHistory()"><span>03</span> Sezon Geçmişi</button><span>›</span>
-        <button type="button" onclick="focusDiary()"><span>04</span> İşlem Defteri</button><span>›</span>
-        <button type="button" onclick="focusProfit()"><span>05</span> Maliyet ve Kârlılık</button>
-      </div>
-      <section class="panel" id="seasonInfoPanel">
-        <div class="panelhead"><div><h2>Sezon bilgileri</h2><p>Seçili tarla için ürün, sezon ve hasat verilerini kaydet.</p></div><span class="tag">TARLA + SEZON</span></div>
-        <form id="seasonInfoForm">
-          <div class="formgrid">
-            <div class="field"><label for="siCrop">Ürün</label><select id="siCrop"><option>Buğday</option><option>Arpa</option><option>Kanola</option><option>Ayçiçeği</option><option>Mısır</option><option>Diğer</option></select></div>
-            <div class="field"><label for="siYear">Üretim sezonu</label><select id="siYear"></select></div>
-            <div class="field"><label for="siYield">Verim (kg/da)</label><input id="siYield" inputmode="decimal" placeholder="Örn. 650"></div>
-            <div class="field"><label for="siPrice">Satış fiyatı (₺/kg)</label><input id="siPrice" inputmode="decimal" placeholder="Örn. 13"></div>
-            <div class="field"><label for="siSupport">Destek / diğer gelir (₺, toplam)</label><input id="siSupport" inputmode="decimal" placeholder="Örn. 15000"></div>
-            <div class="field"><label for="siRevenueOther">Diğer ürün geliri (₺, toplam)</label><input id="siRevenueOther" inputmode="decimal" placeholder="Varsa saman vb."></div>
+
+          <!-- AI Yanıt Alanı -->
+          <div id="aiOutputCard" class="hidden bg-emerald-50/70 border border-emerald-200 rounded-2xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <span id="aiOutputTitle" class="text-xs font-bold text-emerald-900">Ziraat AI Agronomi Değerlendirmesi</span>
+              <button id="closeAiOutputBtn" type="button" class="text-xs text-slate-500 hover:text-slate-800 cursor-pointer">Kapat ✕</button>
+            </div>
+            <div id="aiOutputBody" class="text-xs text-slate-700 leading-relaxed space-y-1.5"></div>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="primary" type="submit">Sezon bilgilerini kaydet</button><button class="secondary" type="button" onclick="focusProfit()">Kârlılığı hesapla ↓</button></div>
-          <p class="hint" style="font-size:10px;color:var(--muted)">Gelir tahmini = verim × alan × satış fiyatı + destek ve diğer gelir. Gerçekleşen verileri girmen önerilir.</p>
-        </form>
+        </div>
       </section>
-      <section class="panel" id="operationPanel">
-        <div class="panelhead"><div><h2>İşlem defteri</h2><p>Ekim, gübreleme, ilaçlama, sulama, hasat ve diğer tarla işlerini tarihçeye ekle.</p></div><span class="tag">UYGULAMA KAYDI</span></div>
-        <form id="operationForm">
-          <div class="formgrid">
-            <div class="field"><label for="opDate">İşlem tarihi</label><input id="opDate" type="date" required></div>
-            <div class="field"><label for="opType">İşlem türü</label><select id="opType"><option>Ekim</option><option>Gübreleme</option><option>İlaçlama</option><option>Sulama</option><option>Toprak işleme</option><option>Biçerdöver / Hasat</option><option>Nakliye</option><option>İşçilik</option><option>Gözlem</option><option>Diğer</option></select></div>
-            <div class="field"><label for="opDesc">Ürün / işlem açıklaması *</label><input id="opDesc" maxlength="160" required placeholder="Örn. 10 kg/da DAP uygulandı"></div>
-            <div class="field"><label for="opAmount">Miktar (isteğe bağlı)</label><input id="opAmount" inputmode="decimal" placeholder="Örn. 10"></div>
-            <div class="field"><label for="opUnit">Miktar birimi</label><select id="opUnit"><option>kg/da</option><option>kg toplam</option><option>L/da</option><option>L toplam</option><option>da</option><option>saat</option><option>adet</option><option>—</option></select></div>
-            <div class="field"><label for="opCost">İşlem maliyeti (₺, toplam)</label><input id="opCost" inputmode="decimal" placeholder="Örn. 12500"></div>
+
+      <!-- =================================================================== -->
+      <!-- GÖRÜNÜM 3: MALİYET TABLOSU (TÜM PARSELLER GENEL GÖRÜNÜMÜ)           -->
+      <!-- =================================================================== -->
+      <section id="viewGlobalCosts" class="hidden max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div class="text-[11px] font-bold tracking-wider text-emerald-700 uppercase">FİNANSAL YÖNETİM</div>
+            <h1 class="text-2xl sm:text-[26px] font-bold text-slate-900 tracking-tight mt-0.5">Maliyet Tablosu</h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+              Tüm parseller için sezonluk üretim giderleri, kârlılık simülatörü ve başabaş verim analizi
+            </p>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="primary" type="submit">＋ İşlemi kaydet</button><button class="secondary" type="button" onclick="focusProfit()">Maliyet ve kârlılığa git ↓</button></div>
-        </form>
-        <div class="tablewrap"><table><thead><tr><th>Tarih</th><th>İşlem</th><th style="text-align:left">Açıklama</th><th>Miktar</th><th>Maliyet ₺</th><th></th></tr></thead><tbody id="operationRows"></tbody></table></div>
-      </section>
-      <section class="panel" id="profitPanel">
-        <div class="panelhead"><div><h2>Maliyet ve kârlılık</h2><p>Seçili tarla ve sezon için kayıtlı giderleri, tahmini geliri ve net sonucu bir arada gör.</p></div><span class="tag">SEZON SONUCU</span></div>
-        <div class="stats" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:14px">
-          <div class="stat"><div class="stat-top">Toplam maliyet</div><strong id="profitCost">0 ₺</strong><small>Seçili sezon</small></div>
-          <div class="stat"><div class="stat-top">Tahmini gelir</div><strong id="profitRevenue">0 ₺</strong><small>Ürün + diğer gelirler</small></div>
-          <div class="stat"><div class="stat-top">Net kâr / zarar</div><strong id="profitNet">0 ₺</strong><small id="profitNetLabel">Gelir − maliyet</small></div>
-          <div class="stat"><div class="stat-top">Başabaş fiyatı</div><strong id="profitBreakEven">—</strong><small>₺/kg, destekler düşülerek</small></div>
+
+          <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            <button type="button" id="globalExportCsvBtn" class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3.5 py-2.5 rounded-xl shadow-xs transition cursor-pointer">
+              <span>↓</span>
+              <span>Excel / CSV İndir</span>
+            </button>
+            <button type="button" id="globalAddExpenseBtn" class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl shadow-xs transition cursor-pointer">
+              <span>+</span>
+              <span>Yeni Gider Ekle</span>
+            </button>
+          </div>
         </div>
-        <div class="resultfoot" style="color:var(--muted);border-top:0;padding-top:0"><span id="profitPerDa">Dekara maliyet: —</span><span id="profitYieldNote">Verim ve fiyat girilmediğinde gelir hesaplanmaz.</span></div>
-        <div class="notice">Bu bölüm girilen verilere göre hesap yapar. Destekler, kira, mazot, hasat, nakliye ve diğer giderleri eksiksiz kaydetmezsen sonuç gerçek kârlılığı yansıtmaz.</div>
-      </section>
-      <section class="panel" id="seasonHistoryPanel">
-        <div class="panelhead"><div><h2>Sezon geçmişi</h2><p>Seçili tarlanın farklı yıllardaki giderlerini ve dekara maliyetini karşılaştır.</p></div><span class="tag" id="sdYearTag"></span></div>
-        <div class="tablewrap"><table><thead><tr><th>Yıl</th><th>Toplam ₺</th><th>₺/da</th><th></th></tr></thead><tbody id="sdYears"></tbody></table></div>
-      </section>
-      <section class="panel">
-        <div class="panelhead"><div><h2>Gider ekle</h2><p>Ürün adını ve ödediğin toplam tutarı yaz. Dekar maliyeti kendiliğinden hesaplanır.</p></div><span class="tag">HIZLI KAYIT</span></div>
-        <form id="costForm"><div class="formgrid">
-          <div class="field"><label for="cDate">Tarih</label><input id="cDate" type="date"></div>
-          <div class="field"><label for="cCat">Gider türü</label><select id="cCat"></select></div>
-          <div class="field"><label for="cDesc">Ürün / gider adı</label><input id="cDesc" maxlength="120" placeholder="Örn. DAP, yaprak gübresi, yabancı ot ilacı"></div>
-          <div class="field"><label for="cAmt">Tutar (₺)</label><input id="cAmt" inputmode="decimal" placeholder="Örn. 12500"></div>
-        </div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><button class="primary" type="submit">＋ Gideri kaydet</button><button class="secondary" type="button" id="npkCostBtn">Son NPK hesabının gübre maliyetini ekle</button></div></form>
-      </section>
-      <section class="panel"><div class="panelhead"><div><h2 id="sdLedgerTitle"></h2></div></div><div class="tablewrap"><table><thead><tr><th>Tarih</th><th>Kategori</th><th style="text-align:left">Açıklama</th><th>₺</th><th></th></tr></thead><tbody id="sdRows"></tbody></table></div><div id="sdCats" style="margin-top:14px"></div></section>
-    </div>
-  </section>
-  <section class="view" id="view-soil"><div class="pageplaceholder"><div class="eyebrow">TOPRAK VERİLERİ</div><h2>Toprak Analizleri</h2><p>Analiz tarihi, laboratuvar, pH, organik madde, tuzluluk ve ölçülen besin elementleri için kayıt ekranı hazırlanacak. Öneriler, analiz yöntemi ve uygun yerel referanslarla birlikte ele alınacak.</p></div></section>
-  <section class="view" id="view-costs">
-    <div class="heading"><div><div class="eyebrow">GİRDİ EKONOMİSİ</div><h1>Maliyet & Gübre Fiyatları</h1><p>Fiyatları gir, NPK hesabının maliyetini gör, senaryoları karşılaştır.</p></div></div>
-    <section class="panel">
-      <div class="panelhead"><div><h2>Gübre fiyatları</h2><p>Fiyatı ₺/kg, ₺/çuval (50 kg) ya da ₺/ton olarak girebilirsin.</p></div><span class="tag">HESAP KAYDI</span></div>
-      <div class="tablewrap"><table><thead><tr><th>Gübre</th><th>Fiyat</th><th>Birim</th><th>₺/kg</th></tr></thead><tbody id="priceBody"></tbody></table></div>
-      <div class="notice">Fiyatlar senin girdiğin tahmini değerlerdir; güncel bayi fiyatlarıyla güncelle. “Özel gübre” satırı, listede olmayan tüm özel gübreler için ortak kullanılır.</div>
-    </section>
-    <section class="panel">
-      <div class="panelhead"><div><h2>Mevcut NPK hesabının maliyeti</h2><p>NPK Hesap Makinesi sekmesindeki son hesaba göre.</p></div><span class="tag">CANLI</span></div>
-      <div class="resultband" style="margin-top:0">
-        <div class="nutrients">
-          <div class="nutrient"><div class="nlabel">TOPLAM MALİYET</div><strong id="cTotal">—</strong><small>tüm arazi</small></div>
-          <div class="nutrient"><div class="nlabel">DEKARA MALİYET</div><strong id="cPer">—</strong><small>₺ / da</small></div>
-          <div class="nutrient"><div class="nlabel">SAF BESİN</div><strong id="cNut">—</strong><small>₺ / kg (N+P₂O₅+K₂O)</small></div>
+
+        <!-- 4 Finansal KPI -->
+        <div id="globalCostKpis" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+
+        <!-- Canlı Verim & Fiyat Simülatörü -->
+        <div id="globalCostSimulator" class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3"></div>
+
+        <!-- Kategori Dağılım Çubuğu -->
+        <div id="globalCostBreakdown" class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3"></div>
+
+        <!-- Detaylı Gider Tablosu -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 class="text-sm font-bold text-slate-900">Sezonluk Gider Kayıtları</h2>
+              <p id="globalCostSummaryCount" class="text-[11px] text-slate-500">Tüm parseller listeleniyor</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <select id="globalCostParcelFilter" class="text-xs sm:text-sm font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600 cursor-pointer">
+                <option value="ALL">Tüm Parseller</option>
+              </select>
+
+              <select id="globalCostCatFilter" class="text-xs sm:text-sm font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600 cursor-pointer">
+                <option value="ALL">Tüm Kategoriler</option>
+                <option value="Tohum">Tohum</option>
+                <option value="Gübre">Gübre</option>
+                <option value="İlaç">İlaç</option>
+                <option value="Mazot & İşçilik">Mazot & İşçilik</option>
+                <option value="Hasat">Hasat</option>
+                <option value="Kira/Diğer">Kira/Diğer</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto border border-slate-200 rounded-xl">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200 text-[10px] font-bold tracking-wider text-slate-500 uppercase">
+                  <th class="py-3 px-3.5">Tarih</th>
+                  <th class="py-3 px-3.5">Parsel</th>
+                  <th class="py-3 px-3.5">Kategori</th>
+                  <th class="py-3 px-3.5">Açıklama</th>
+                  <th class="py-3 px-3.5 text-right">Dekar Başı (₺/da)</th>
+                  <th class="py-3 px-3.5 text-right">Toplam (₺)</th>
+                  <th class="py-3 px-3.5 text-right">İşlem</th>
+                </tr>
+              </thead>
+              <tbody id="globalCostTableBody" class="divide-y divide-slate-100 text-xs"></tbody>
+            </table>
+          </div>
         </div>
-        <div class="resultfoot"><span id="cInfo"></span></div>
+      </section>
+
+      <!-- =================================================================== -->
+      <!-- GÖRÜNÜM 4: HAVA DURUMU & İLAÇLAMA TAKVİMİ                           -->
+      <!-- =================================================================== -->
+      <section id="viewWeather" class="hidden max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+        <div>
+          <div class="text-[11px] font-bold tracking-wider text-emerald-700 uppercase">TARIMSAL METEOROLOJİ</div>
+          <h1 class="text-2xl sm:text-[26px] font-bold text-slate-900 tracking-tight mt-0.5">Bölgesel Hava Durumu</h1>
+          <p class="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Eligül Çiftliği (Tekirdağ / Karaevli & Çorlu hattı) saatlik ilaçlama ve toprak işleme uygunluk analizi
+          </p>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-5">
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <div class="text-[10px] font-bold text-slate-400 uppercase">ANLIK SICAKLIK</div>
+              <div class="text-2xl font-extrabold text-slate-900 mt-1">17°C</div>
+              <div class="text-xs text-slate-500 mt-1">Nem: %68 • Çiy Noktası: 11°C</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <div class="text-[10px] font-bold text-slate-400 uppercase">BUGÜNKÜ YAĞIŞ</div>
+              <div class="text-2xl font-extrabold text-sky-700 mt-1">7.7 mm</div>
+              <div class="text-xs text-slate-500 mt-1">Öğleden sonra hafif sağanak</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <div class="text-[10px] font-bold text-slate-400 uppercase">RÜZGAR HIZI</div>
+              <div class="text-2xl font-extrabold text-slate-900 mt-1">15 km/s</div>
+              <div class="text-xs text-slate-500 mt-1">Kuzeydoğu • Sürüklenme düşük</div>
+            </div>
+            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+              <div class="text-[10px] font-bold text-emerald-800 uppercase">İLAÇLAMA PENCERESİ</div>
+              <div class="text-2xl font-extrabold text-emerald-800 mt-1">Uygun</div>
+              <div class="text-xs text-emerald-700 mt-1">07:00 – 11:30 arası ideal</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+            <div class="bg-sky-50 border border-sky-200 rounded-xl p-3.5 text-center">
+              <div class="text-xs font-bold text-slate-900">Bugün (21.11)</div>
+              <div class="text-lg font-extrabold text-slate-900 my-1.5">17° / 11°</div>
+              <div class="text-xs font-semibold text-sky-700">7.7 mm Yağış</div>
+              <div class="text-[11px] text-slate-500 mt-1">Rüzgar: 15 km/s</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-center">
+              <div class="text-xs font-bold text-slate-800">Yarın (22.11)</div>
+              <div class="text-lg font-extrabold text-slate-900 my-1.5">15° / 8°</div>
+              <div class="text-xs font-medium text-emerald-700">Yağış Yok (0 mm)</div>
+              <div class="text-[11px] text-slate-500 mt-1">Rüzgar: 11 km/s</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-center">
+              <div class="text-xs font-bold text-slate-800">Pazartesi (23.11)</div>
+              <div class="text-lg font-extrabold text-slate-900 my-1.5">14° / 7°</div>
+              <div class="text-xs font-semibold text-sky-700">3.5 mm Yağış</div>
+              <div class="text-[11px] text-slate-500 mt-1">Rüzgar: 18 km/s</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-center">
+              <div class="text-xs font-bold text-slate-800">Salı (24.11)</div>
+              <div class="text-lg font-extrabold text-slate-900 my-1.5">12° / 5°</div>
+              <div class="text-xs font-medium text-emerald-700">Açık (0 mm)</div>
+              <div class="text-[11px] text-slate-500 mt-1">Rüzgar: 9 km/s</div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-center">
+              <div class="text-xs font-bold text-slate-800">Çarşamba (25.11)</div>
+              <div class="text-lg font-extrabold text-slate-900 my-1.5">13° / 6°</div>
+              <div class="text-xs font-medium text-emerald-700">Parçalı Bulutlu</div>
+              <div class="text-[11px] text-slate-500 mt-1">Rüzgar: 12 km/s</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- MODAL 1: YENİ PARSEL EKLEME (UYDU HARİTASI + POLİGON ÇİZİMİ)            -->
+  <!-- ======================================================================= -->
+  <div id="newParcelModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-4xl w-full shadow-2xl overflow-hidden my-auto">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <div class="text-[10px] font-bold tracking-wider text-emerald-700 uppercase">UYDU SINIR ÇİZİMİ</div>
+          <h3 class="text-base sm:text-lg font-bold text-slate-900">+ Yeni Parsel Oluştur</h3>
+        </div>
+        <button id="closeNewParcelModalBtn" type="button" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer">✕</button>
       </div>
-      <div class="formgrid" style="margin-top:14px;grid-template-columns:1fr auto;align-items:end"><div class="field"><label for="scenName">Senaryo adı</label><input id="scenName" maxlength="60" placeholder="Örn. DAP + Üre"></div><button class="primary" id="saveScen">Senaryo olarak kaydet</button></div>
-    </section>
-    <section class="panel">
-      <div class="panelhead"><div><h2>Senaryo karşılaştırma</h2><p>Farklı gübre karışımlarını yan yana koy. Maliyetler güncel fiyatlarla hesaplanır.</p></div></div>
-      <div class="tablewrap"><table><thead><tr><th>Senaryo</th><th>N/P₂O₅/K₂O</th><th>Gübre kg/da</th><th>₺/da</th><th>Toplam ₺</th><th>₺/kg besin</th><th>Fark ₺/da</th><th></th></tr></thead><tbody id="scenBody"></tbody></table></div>
-    </section>
-  </section>
-  <section class="view" id="view-weather">
-    <div class="heading"><div><div class="eyebrow">WINDY · KONUM BAZLI DETAY</div><h1>Hava Durumu</h1><p id="weatherStatusPage" aria-live="polite">Windy haritasını konumunda açmak için GPS izni ver.</p></div><button class="primary weather-locate" type="button">⌖ Anlık konumumu göster</button></div>
-    <section class="panel weather-page-panel"><div class="panelhead"><div><h2>Windy detaylı tahmin haritası</h2><p>Katman menüsünden rüzgâr, sıcaklık, yağış, bulut, radar ve diğer harita görünümlerini seç; zaman çizelgesinden tahmin saatini değiştir, haritaya dokunarak nokta tahminini incele.</p></div><span class="tag">WINDY KATMANLARI AÇIK</span></div><div class="weather-frame weather-frame-page"><iframe id="weatherMapPage" title="Windy detaylı hava durumu tahmin haritası" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe><div class="weather-empty" id="weatherEmptyPage"><span>☼</span><b>Harita konum bekliyor</b><small>Konum bilgisini yalnızca bu düğmeye bastığında alırız.</small></div></div><p class="weather-privacy">Haritada Windy’nin gömülü arayüzünde sunulan katmanlar, basınç, zaman çizelgesi ve nokta detayları açıktır. Konum koordinatları haritayı odaklamak için Windy’ye gönderilir.</p><div class="weather-toolbar"><span id="weatherCoords">Konum bekleniyor</span><a id="openWindyFull" href="https://www.windy.com/" target="_blank" rel="noopener noreferrer">Windy’de tam ekran aç ↗</a></div></section>
-    <section class="panel weather-report-panel"><div class="panelhead"><div><div class="eyebrow">KONUM RAPORU · OPEN-METEO</div><h2>Anlık koşullar ve tahmin</h2><p id="weatherReportStatus" aria-live="polite">Detaylı yerel rapor için önce konumunu paylaş.</p></div><span class="tag">SAATLİK + 7 GÜN</span></div><div id="weatherReport" class="weather-report-empty">Konum izni verildiğinde basınç, çiy noktası, bulutluluk, görüş, rüzgâr hamleleri, UV ve yağış dahil ayrıntılar burada görünür.</div><small class="weather-attribution">Sayısal hava raporu Open-Meteo tahmin servisinden alınır · <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></small></section>
-  </section>
-  <section class="view" id="view-ai"><div class="pageplaceholder"><div class="eyebrow">EKİNVYA ASİSTAN</div><h1>AI Asistan</h1><p>Tarla ve sezon verilerine göre yardımcı olacak asistan alanı. Bağlantı ve yanıt üretimi bu taslakta henüz etkin değil.</p><div class="panel"><div class="panelhead"><div><h2>Nasıl yardımcı olabilirim?</h2><p>Örnek: “Bu hafta parsellerimde hangi işleri kontrol etmeliyim?”</p></div></div><div class="field"><label for="aiPrompt">Mesajın</label><textarea id="aiPrompt" rows="3" placeholder="Sorunu yaz…" disabled style="width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;resize:vertical"></textarea></div><button class="primary" type="button" disabled style="margin-top:12px;opacity:.55">Asistana sor · Yakında</button></div></div></section>
-  <section class="view" id="view-profile">
-    <header class="auth-site-header">
-      <a class="auth-brand" href="#authHero" aria-label="Ekinvya ana sayfa"><span class="auth-brandmark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21V9m0 0C12 5.7 9.3 3 6 3c0 3.3 2.7 6 6 6Zm0 0c0-3.3 2.7-6 6-6 0 3.3-2.7 6-6 6Z"/></svg></span><span>Ekinvya</span></a>
-      <nav class="auth-site-nav" aria-label="Sayfa bağlantıları"><a href="#authFeatures">Özellikler</a><a href="#authFeatures">Çözümler</a><a href="#authFeatures">Tarım araçları</a></nav>
-      <div class="auth-header-actions"><a class="auth-header-login" href="#authSection">Giriş yap</a><button class="auth-header-signup" type="button" data-auth-mode="signup" data-auth-scroll>Ücretsiz başla <span aria-hidden="true">↗</span></button></div>
-    </header>
-    <section class="auth-hero" id="authHero"><div class="auth-hero-badge"><span aria-hidden="true"></span> Akıllı tarım asistanı · Bulut destekli</div><h1>Tarımda verimlilik ve planlama,<br class="auth-desktop-break"> <em>artık çok daha kolay.</em></h1><p>Parsel takibinden gübre hesaplarına ve konum tabanlı hava raporlarına kadar tarımsal operasyonlarını tek yerden yönet.</p></section>
-    <div id="authConfigNotice" class="auth-notice" role="status" aria-live="polite" hidden></div>
-    <div id="authGuestPanel" class="auth-layout auth-landing-layout">
-      <aside class="auth-intro"><span class="auth-mark" aria-hidden="true">✳</span><div class="eyebrow">TARLALARIN SENİNLE</div><h2>Üretiminin her adımını Ekinvya’da takip et.</h2><p>Hesabınla giriş yap veya ücretsiz üyelik oluşturarak tarlalarını yönetmeye başla. Parsel, sezon, maliyet ve hesap kayıtların hesabında saklanır.</p><ul><li><span aria-hidden="true">✓</span> Parsel ve sezon kayıtları</li><li><span aria-hidden="true">✓</span> Hava ve üretim araçları</li><li><span aria-hidden="true">✓</span> Hesabına özel bulut eşitlemesi</li></ul><a class="auth-intro-link" href="#authFeatures">Ekinvya özelliklerini keşfet <span aria-hidden="true">↓</span></a></aside>
-      <div class="panel auth-card" id="authSection" aria-labelledby="authCardTitle">
-        <div class="auth-card-heading"><div class="eyebrow">EKİNVYA HESABI</div><h2 id="authCardTitle">Hesabına devam et</h2><p>Giriş yap veya yeni bir hesap oluştur.</p></div>
-        <div class="auth-tabs" id="authTabs" role="group" aria-label="Hesap işlemi"><button type="button" class="active" id="authLoginTab" aria-pressed="true" data-auth-mode="login">Giriş yap</button><button type="button" id="authSignupTab" aria-pressed="false" data-auth-mode="signup">Üye ol</button></div>
-        <form id="authForm" novalidate>
-          <div class="field auth-field" id="authNameField" hidden><label for="authName">Ad soyad</label><input id="authName" name="name" type="text" autocomplete="name" maxlength="80" placeholder="Adın ve soyadın"></div>
-          <div class="field auth-field"><label for="authEmail">E-posta adresi</label><input id="authEmail" name="email" type="email" autocomplete="email" inputmode="email" maxlength="254" placeholder="ornek@eposta.com" required></div>
-          <div class="field auth-field"><label for="authPassword">Şifre</label><input id="authPassword" name="password" type="password" autocomplete="current-password" minlength="8" maxlength="128" placeholder="En az 8 karakter" required></div>
-          <div class="field auth-field" id="authConfirmField" hidden><label for="authPasswordConfirm">Şifre tekrarı</label><input id="authPasswordConfirm" name="passwordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" placeholder="Şifreni yeniden yaz"></div>
-          <div class="auth-notice-consent auth-field" id="authNoticeField" hidden><input id="authNoticeAck" name="privacyNoticeAcknowledged" type="checkbox" required><div><label for="authNoticeAck">Aydınlatma metnini okudum ve bilgilendirildim.</label><a href="./aydinlatma.html" target="_blank" rel="noopener noreferrer">KVKK Aydınlatma Metni <span aria-hidden="true">↗</span></a></div></div>
-          <button class="auth-forgot" type="button" id="authForgotButton">Şifremi unuttum</button>
-          <button class="primary auth-submit" id="authSubmit" type="submit">Giriş yap</button>
-          <p class="auth-feedback" id="authFeedback" role="status" aria-live="polite"></p>
+
+      <div class="p-4 sm:p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+        <!-- Konum Arama & GPS Barı -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-slate-50 border border-slate-200 rounded-xl p-3">
+          <form id="modalSearchLocationForm" class="flex items-center gap-2 flex-1">
+            <input id="modalLocationSearchInput" type="text" placeholder="Mahalle / köy ara (Örn: Karaevli, Çorlu, Muratlı)" class="flex-1 text-xs sm:text-sm bg-white border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600" />
+            <button type="submit" id="modalLocationSearchBtn" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold px-3.5 py-2 rounded-xl transition cursor-pointer">
+              Konuma Git
+            </button>
+          </form>
+
+          <button type="button" id="modalGpsBtn" class="inline-flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-semibold px-3.5 py-2 rounded-xl transition cursor-pointer">
+            <span>📍</span>
+            <span>Konumuma Git</span>
+          </button>
+        </div>
+
+        <!-- Uydu Çizim Haritası -->
+        <div class="relative rounded-2xl overflow-hidden border border-slate-200">
+          <div id="newParcelDrawMap" class="w-full h-[300px] sm:h-[340px]"></div>
+          <div class="bg-slate-900 text-white px-3.5 py-2 text-[11px] flex flex-wrap items-center justify-between gap-2">
+            <span>Harita sağ üstündeki <strong>çokgen (⬠)</strong> aracına tıklayıp tarla köşelerini işaretleyin.</span>
+            <span id="drawStatusBadge" class="font-bold text-amber-300">Sınır bekleniyor</span>
+          </div>
+        </div>
+
+        <!-- Parsel Bilgi Formu -->
+        <form id="newParcelForm" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Parsel Adı *</label>
+              <input id="npName" type="text" required placeholder="Örn: Karaevli Güney Tarla" class="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Alan (dekar) * <span class="text-emerald-700 font-normal">(Otomatik)</span></label>
+              <input id="npArea" type="number" step="0.1" min="0.1" required placeholder="Çizimden otomatik dolar" class="w-full text-sm font-bold bg-emerald-50/50 border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Ekili Ürün *</label>
+              <select id="npCrop" class="w-full text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600">
+                <option value="Buğday">Buğday</option>
+                <option value="Kanola">Kanola</option>
+                <option value="Ayçiçeği">Ayçiçeği</option>
+                <option value="Arpa">Arpa</option>
+                <option value="Mısır">Mısır</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Konum / Mahalle *</label>
+              <input id="npLocation" type="text" required value="Karaevli" placeholder="Örn: Karaevli" class="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Ekim Tarihi</label>
+              <input id="npSowingDate" type="text" value="18.11.2026" class="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Toprak & Sulama</label>
+              <div class="grid grid-cols-2 gap-2">
+                <select id="npSoil" class="w-full text-xs bg-white border border-slate-300 rounded-xl px-2.5 py-2 focus:outline-none focus:border-emerald-600">
+                  <option value="Tınlı Toprak">Tınlı Toprak</option>
+                  <option value="Killi Tınlı">Killi Tınlı</option>
+                  <option value="Alüvyal Toprak">Alüvyal Toprak</option>
+                  <option value="Kumlu Tınlı">Kumlu Tınlı</option>
+                </select>
+                <select id="npIrrigation" class="w-full text-xs bg-white border border-slate-300 rounded-xl px-2.5 py-2 focus:outline-none focus:border-emerald-600">
+                  <option value="Kuru Tarım">Kuru Tarım</option>
+                  <option value="Sulu Tarım">Sulu Tarım</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+            <button id="cancelNewParcelBtn" type="button" class="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+              İptal
+            </button>
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-semibold shadow-xs cursor-pointer">
+              Parseli Kaydet ve Haritaya Ekle
+            </button>
+          </div>
         </form>
-        <form id="authRecoveryForm" hidden novalidate><h3>Yeni şifre belirle</h3><p>E-posta bağlantısıyla hesabını doğruladıktan sonra yeni şifreni gir.</p><div class="field"><label for="authNewPassword">Yeni şifre</label><input id="authNewPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></div><div class="field"><label for="authNewPasswordConfirm">Yeni şifre tekrarı</label><input id="authNewPasswordConfirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></div><button class="primary auth-submit" type="submit">Şifreyi güncelle</button><p class="auth-feedback" id="authRecoveryFeedback" role="status" aria-live="polite"></p></form>
-        <p class="auth-security-note">Şifren Ekinvya tarafından okunmaz veya yerel uygulama dosyasında saklanmaz. Kimlik doğrulama Supabase Auth üzerinden yürütülür.</p>
       </div>
     </div>
-    <section id="authAccountPanel" class="panel auth-account" hidden><div class="auth-account-icon" aria-hidden="true">✓</div><div><div class="eyebrow">OTURUM AÇIK</div><h2 id="authAccountName">Ekinvya hesabın</h2><p id="authAccountEmail"></p><p class="auth-security-note">Hesabın hazır. Parsel ve maliyet kayıtların bu hesapla bulut üzerinden eşitlenir.</p></div><button class="secondary" type="button" id="authSignOutButton">Güvenli çıkış</button><p id="authAccountFeedback" class="auth-feedback" role="status" aria-live="polite"></p></section>
-    <section class="auth-feature-section" id="authFeatures" aria-labelledby="authFeaturesTitle"><div class="auth-feature-heading"><div><div class="eyebrow">EKİNVYA’YI KEŞFET</div><h2 id="authFeaturesTitle">Tarlan için ihtiyaç duyduğun araçlar.</h2></div><a href="#authSection">Hesabına giriş yap ↗</a></div><div class="auth-feature-grid">
-      <article class="auth-feature-card"><img src="https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=900&q=82" alt="Yeşil tarlalar ve ekili araziler" loading="lazy"><div class="auth-feature-overlay"></div><div class="auth-feature-copy"><span aria-hidden="true">⌖</span><h3>Parsel ve ekim takibi</h3><p>Tarla bilgilerini ve üretim sezonlarını bir arada tut.</p></div></article>
-      <article class="auth-feature-card"><img src="https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&w=900&q=82" alt="Hasat edilmiş tarla ve tarım çalışması" loading="lazy"><div class="auth-feature-overlay"></div><div class="auth-feature-copy"><span aria-hidden="true">▦</span><h3>Gübre ve verim hesabı</h3><p>Girdi, alan ve maliyet hesaplarını düzenle.</p></div></article>
-      <article class="auth-feature-card"><img src="https://images.unsplash.com/photo-1625246333195-78d9c38ad449?auto=format&fit=crop&w=900&q=82" alt="Tarlada ürün kontrolü yapan çiftçi" loading="lazy"><div class="auth-feature-overlay"></div><div class="auth-feature-copy"><span aria-hidden="true">◷</span><h3>Sezon ve saha raporları</h3><p>İşlem defterini, hava raporlarını ve sezon notlarını takip et.</p></div></article>
-    </div></section><footer class="auth-site-footer"><span>© 2026 Ekinvya · Akıllı Tarım Asistanı</span><span>Güvenli hesap erişimi · Supabase Auth</span></footer>
-  </section>  <section class="view" id="view-farmers"><div class="pageplaceholder"><div class="eyebrow">MÜŞTERİ İLİŞKİLERİ</div><h2>Çiftçi CRM</h2><p>Çiftçi iletişim bilgileri, görüşme notları, ürün ilgisi, teklif geçmişi ve parsel bağlantıları için güvenli, yetkili erişime sahip bir kayıt sistemi planlanıyor.</p></div></section>
-  <section class="view" id="view-reports"><div class="pageplaceholder"><div class="eyebrow">ANALİZ VE ÇIKTILAR</div><h2>Raporlar & Kayıtlar</h2><p>Kaydettiğin hesapları görüntüleyebilir, CSV dosyası olarak dışa aktarabilir ve yazdırma ekranından PDF oluşturabilirsin.</p><div id="allCalcs" class="quicklist" style="margin-top:22px"></div></div></section>
-</main>
-</div>
-<nav class="mobilebar" id="mobilebar">
-  <button class="active" data-view="dashboard"><span>⌂</span>Ana Sayfa</button>
-  <button data-view="fields"><span>▧</span>Parsellerim</button>
-  <button data-view="weather"><span>☼</span>Hava Durumu</button>
-  <button data-view="ai"><span>✦</span>AI Asistan</button>
-  <button data-view="profile"><span>◉</span>Profil</button>
-</nav>
-<div class="toast" id="toast"></div>
-<script src="./vendor/supabase.min.js" defer crossorigin="anonymous"></script>
-<script src="./supabase-config.js" defer></script>
-<script src="./cloud-storage.js" defer></script>
-<script src="./app.js" defer></script>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer crossorigin=""></script>
-<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js" defer crossorigin=""></script>
-<script src="./field-map.js" defer></script>
-<script src="./auth.js" defer></script>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- MODAL 2: PARSEL BİLGİLERİNİ DÜZENLE                                     -->
+  <!-- ======================================================================= -->
+  <div id="editParcelModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-md w-full shadow-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-900">Parseli Düzenle</h3>
+        <button id="closeEditParcelModalBtn" type="button" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer">✕</button>
+      </div>
+
+      <form id="editParcelForm" class="p-5 space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Parsel Adı</label>
+          <input id="epName" type="text" required class="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Ekili Ürün</label>
+            <select id="epCrop" class="w-full text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600">
+              <option value="Buğday">Buğday</option>
+              <option value="Kanola">Kanola</option>
+              <option value="Ayçiçeği">Ayçiçeği</option>
+              <option value="Arpa">Arpa</option>
+              <option value="Mısır">Mısır</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Konum / Mahalle</label>
+            <input id="epLocation" type="text" required class="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Toprak Yapısı</label>
+            <input id="epSoil" type="text" required class="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Sulama Durumu</label>
+            <select id="epIrrigation" class="w-full text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600">
+              <option value="Kuru Tarım">Kuru Tarım</option>
+              <option value="Sulu Tarım">Sulu Tarım</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Ekim Tarihi</label>
+          <input id="epSowingDate" type="text" required class="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600" />
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+          <button id="cancelEditParcelBtn" type="button" class="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+            İptal
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold cursor-pointer">
+            Güncelle
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- MODAL 3: YENİ GİDER EKLE (ÇİFT YÖNLÜ ₺/da <-> ₺ HESAPLAMA)              -->
+  <!-- ======================================================================= -->
+  <div id="expenseModal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white border border-slate-200 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+        <div>
+          <div class="text-[10px] font-bold tracking-wider text-emerald-700 uppercase">ÜRETİM GİDERİ</div>
+          <h3 class="text-base font-bold text-slate-900">+ Yeni Gider Ekle</h3>
+        </div>
+        <button id="closeExpenseModalBtn" type="button" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer">✕</button>
+      </div>
+
+      <form id="expenseForm" class="p-5 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Parsel Seçimi *</label>
+            <select id="expParcelSelect" required class="w-full text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600"></select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Gider Kategorisi *</label>
+            <select id="expCategorySelect" required class="w-full text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600">
+              <option value="Tohum">Tohum</option>
+              <option value="Gübre">Gübre</option>
+              <option value="İlaç">İlaç</option>
+              <option value="Mazot & İşçilik">Mazot & İşçilik</option>
+              <option value="Hasat">Hasat</option>
+              <option value="Kira/Diğer">Kira/Diğer</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">İşlem / Girdi Açıklaması *</label>
+          <input id="expDescInput" type="text" required placeholder="Örn: 20-20-0 Kompoze Taban Gübresi (25 kg/da)" class="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600" />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Tarih *</label>
+            <input id="expDateInput" type="text" required value="21.11.2026" class="w-full text-sm border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Dekar Başı (₺/da) *</label>
+            <input id="expPerDecareInput" type="number" step="0.01" min="0" required placeholder="0.00" class="w-full text-sm font-bold border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600" />
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Toplam Tutar (₺) *</label>
+            <input id="expTotalInput" type="number" step="0.01" min="0" required placeholder="0.00" class="w-full text-sm font-extrabold bg-emerald-50/50 border border-slate-300 rounded-xl px-3 py-2 focus:outline-none focus:border-emerald-600" />
+          </div>
+        </div>
+
+        <p class="text-[11px] text-slate-500 bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2">
+          Dekar başı maliyet (₺/da) veya toplam tutar (₺) alanlarından birini yazdığınızda diğeri seçili parselin dekarına göre otomatik hesaplanır.
+        </p>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+          <button id="cancelExpenseModalBtn" type="button" class="px-4 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+            Vazgeç
+          </button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold shadow-xs cursor-pointer">
+            Gideri Kaydet
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Bildirim Toast Kutusu (alert/confirm yerine) -->
+  <div id="toastNotification" class="hidden fixed bottom-5 right-5 z-[60] bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-lg border border-slate-700 flex items-center gap-2.5 transition-all">
+    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+    <span id="toastMessage">İşlem tamamlandı.</span>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- SAF VANILLA JAVASCRIPT UYGULAMA MANTIĞI                                -->
+  <!-- ======================================================================= -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // -----------------------------------------------------------------------
+      // 1. BAŞLANGIÇ VERİLERİ (PARSELLER, UYDU GEÇİŞLERİ VE GİDERLER)
+      // -----------------------------------------------------------------------
+      const DEFAULT_PASSES = [
+        { date: '16.11.2026', ndvi: 0.17, cloud: 0 },
+        { date: '01.11.2026', ndvi: 0.21, cloud: 2 },
+        { date: '17.10.2026', ndvi: 0.21, cloud: 0 },
+        { date: '02.10.2026', ndvi: 0.15, cloud: 4 },
+        { date: '17.09.2026', ndvi: 0.16, cloud: 0 },
+        { date: '02.09.2026', ndvi: 0.17, cloud: 1 },
+        { date: '18.08.2026', ndvi: 0.17, cloud: 0 },
+        { date: '03.08.2026', ndvi: 0.19, cloud: 3 },
+        { date: '19.07.2026', ndvi: 0.21, cloud: 0 },
+        { date: '04.07.2026', ndvi: 0.31, cloud: 2 },
+        { date: '19.06.2026', ndvi: 0.44, cloud: 0 },
+        { date: '05.06.2026', ndvi: 0.56, cloud: 1 }
+      ];
+
+      let parcels = [
+        {
+          id: 'p-ciftlik-arkasi',
+          name: 'çiftlik arkası',
+          areaDecare: 56.3,
+          crop: 'Buğday',
+          location: 'Karaevli',
+          sowingDate: '15.11.2026',
+          soilType: 'Tınlı Toprak',
+          irrigation: 'Kuru Tarım',
+          expectedYieldKgDa: 520,
+          salePriceTryKg: 11.50,
+          center: [41.064158, 27.684434],
+          polygon: {
+            type: 'Feature',
+            geometry: {
+              type: 'Polygon',
+              coordinates: [[
+                [27.6826, 41.0652],
+                [27.6861, 41.0650],
+                [27.6865, 41.0631],
+                [27.6829, 41.0633],
+                [27.6826, 41.0652]
+              ]]
+            }
+          },
+          passes: DEFAULT_PASSES.map((item) => ({ ...item }))
+        },
+        {
+          id: 'p-karaevli-kuzey',
+          name: 'Karaevli Kuzey Parsel',
+          areaDecare: 74.5,
+          crop: 'Kanola',
+          location: 'Karaevli',
+          sowingDate: '04.10.2026',
+          soilType: 'Killi Tınlı',
+          irrigation: 'Kuru Tarım',
+          expectedYieldKgDa: 310,
+          salePriceTryKg: 24.00,
+          center: [41.0725, 27.6780],
+          polygon: {
+            type: 'Feature',
+            geometry: {
+              type: 'Polygon',
+              coordinates: [[
+                [27.6758, 41.0738],
+                [27.6801, 41.0736],
+                [27.6804, 41.0713],
+                [27.6762, 41.0711],
+                [27.6758, 41.0738]
+              ]]
+            }
+          },
+          passes: [
+            { date: '16.11.2026', ndvi: 0.58, cloud: 0 },
+            { date: '01.11.2026', ndvi: 0.51, cloud: 1 },
+            { date: '17.10.2026', ndvi: 0.36, cloud: 0 },
+            { date: '02.10.2026', ndvi: 0.18, cloud: 2 },
+            { date: '17.09.2026', ndvi: 0.16, cloud: 0 },
+            { date: '02.09.2026', ndvi: 0.15, cloud: 0 },
+            { date: '18.08.2026', ndvi: 0.17, cloud: 1 },
+            { date: '03.08.2026', ndvi: 0.18, cloud: 0 },
+            { date: '19.07.2026', ndvi: 0.20, cloud: 2 },
+            { date: '04.07.2026', ndvi: 0.25, cloud: 0 },
+            { date: '19.06.2026', ndvi: 0.42, cloud: 0 },
+            { date: '05.06.2026', ndvi: 0.54, cloud: 1 }
+          ]
+        },
+        {
+          id: 'p-corlu-yolu',
+          name: 'Çorlu Yolu Üzeri',
+          areaDecare: 48.0,
+          crop: 'Ayçiçeği',
+          location: 'Seymen',
+          sowingDate: '12.11.2026',
+          soilType: 'Alüvyal Toprak',
+          irrigation: 'Kuru Tarım',
+          expectedYieldKgDa: 260,
+          salePriceTryKg: 22.50,
+          center: [41.0921, 27.7415],
+          polygon: {
+            type: 'Feature',
+            geometry: {
+              type: 'Polygon',
+              coordinates: [[
+                [27.7398, 41.0931],
+                [27.7431, 41.0933],
+                [27.7435, 41.0912],
+                [27.7401, 41.0910],
+                [27.7398, 41.0931]
+              ]]
+            }
+          },
+          passes: [
+            { date: '16.11.2026', ndvi: 0.22, cloud: 0 },
+            { date: '01.11.2026', ndvi: 0.24, cloud: 1 },
+            { date: '17.10.2026', ndvi: 0.25, cloud: 0 },
+            { date: '02.10.2026', ndvi: 0.27, cloud: 3 },
+            { date: '17.09.2026', ndvi: 0.32, cloud: 0 },
+            { date: '02.09.2026', ndvi: 0.41, cloud: 0 },
+            { date: '18.08.2026', ndvi: 0.59, cloud: 1 },
+            { date: '03.08.2026', ndvi: 0.68, cloud: 0 },
+            { date: '19.07.2026', ndvi: 0.72, cloud: 0 },
+            { date: '04.07.2026', ndvi: 0.65, cloud: 2 },
+            { date: '19.06.2026', ndvi: 0.48, cloud: 0 },
+            { date: '05.06.2026', ndvi: 0.30, cloud: 1 }
+          ]
+        }
+      ];
+
+      const CATEGORY_META = {
+        'Tohum': { color: 'bg-sky-500', badge: 'bg-sky-50 text-sky-800 border-sky-200' },
+        'Gübre': { color: 'bg-emerald-600', badge: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
+        'İlaç': { color: 'bg-violet-500', badge: 'bg-violet-50 text-violet-800 border-violet-200' },
+        'Mazot & İşçilik': { color: 'bg-amber-500', badge: 'bg-amber-50 text-amber-800 border-amber-200' },
+        'Hasat': { color: 'bg-rose-500', badge: 'bg-rose-50 text-rose-800 border-rose-200' },
+        'Kira/Diğer': { color: 'bg-indigo-500', badge: 'bg-indigo-50 text-indigo-800 border-indigo-200' }
+      };
+
+      let expenses = [
+        { id: 'e-1', parcelId: 'p-ciftlik-arkasi', date: '18.10.2026', category: 'Mazot & İşçilik', description: 'Goble disk & kazayağı tohum yatağı hazırlığı (3,8 lt/da)', perDecare: 460 },
+        { id: 'e-2', parcelId: 'p-ciftlik-arkasi', date: '14.11.2026', category: 'Tohum', description: 'Sertifikalı Ekmeklik Buğday Tohumu (24 kg/da)', perDecare: 680 },
+        { id: 'e-3', parcelId: 'p-ciftlik-arkasi', date: '15.11.2026', category: 'Gübre', description: '20-20-0 Taban Gübresi (25 kg/da) + Üst Üre Planı', perDecare: 940 },
+        { id: 'e-4', parcelId: 'p-ciftlik-arkasi', date: '16.11.2026', category: 'İlaç', description: 'Geniş yapraklı yabancı ot & pas koruma paketi', perDecare: 310 },
+        { id: 'e-5', parcelId: 'p-ciftlik-arkasi', date: '20.11.2026', category: 'Hasat', description: 'Biçerdöver hasat & nakliye karşılığı', perDecare: 380 },
+
+        { id: 'e-6', parcelId: 'p-karaevli-kuzey', date: '22.09.2026', category: 'Mazot & İşçilik', description: 'Derin sürüm, rotovatör ve mibzer ekimi', perDecare: 540 },
+        { id: 'e-7', parcelId: 'p-karaevli-kuzey', date: '03.10.2026', category: 'Tohum', description: 'Hibrit Kışlık Kanola Tohumu (0,5 kg/da)', perDecare: 590 },
+        { id: 'e-8', parcelId: 'p-karaevli-kuzey', date: '04.10.2026', category: 'Gübre', description: 'DAP Taban Gübresi + Amonyum Sülfat & Yaprak Bor', perDecare: 1180 },
+        { id: 'e-9', parcelId: 'p-karaevli-kuzey', date: '08.11.2026', category: 'İlaç', description: 'Sonbahar büyüme düzenleyici & yaprak biti ilacı', perDecare: 420 },
+        { id: 'e-10', parcelId: 'p-karaevli-kuzey', date: '15.11.2026', category: 'Kira/Diğer', description: '2026/2027 üretim sezonu parsel icari', perDecare: 650 },
+
+        { id: 'e-11', parcelId: 'p-corlu-yolu', date: '05.11.2026', category: 'Mazot & İşçilik', description: 'Sonbahar derin pulluk sürümü & kesek kırma', perDecare: 490 },
+        { id: 'e-12', parcelId: 'p-corlu-yolu', date: '12.11.2026', category: 'Tohum', description: 'Clearfield Yağlık Ayçiçeği Tohumu (erken tedarik)', perDecare: 520 },
+        { id: 'e-13', parcelId: 'p-corlu-yolu', date: '18.11.2026', category: 'Gübre', description: '15-15-15 + Çinko Taban Gübresi', perDecare: 820 },
+        { id: 'e-14', parcelId: 'p-corlu-yolu', date: '20.11.2026', category: 'İlaç', description: 'Ekim öncesi toprak herbisiti', perDecare: 290 }
+      ];
+
+      // -----------------------------------------------------------------------
+      // 2. UYGULAMA DURUM DEĞİŞKENLERİ
+      // -----------------------------------------------------------------------
+      let activeParcelId = parcels[0].id;
+      let activeIndexType = 'NDVI';
+      let activePassIdx = 0;
+
+      // Harita Referansları
+      let detailMap = null;
+      let detailPolygonLayer = null;
+      let vertexEditHandler = null;
+      let isEditingPolygon = false;
+
+      let drawMap = null;
+      let drawItemsGroup = null;
+      let pendingDrawnGeoJson = null;
+
+      // -----------------------------------------------------------------------
+      // 3. YARDIMCI FONKSİYONLAR
+      // -----------------------------------------------------------------------
+      function fmtNum(val, decimals) {
+        return Number(val).toLocaleString('tr-TR', {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals
+        });
+      }
+
+      function fmtTry(val) {
+        return fmtNum(val, 2) + ' ₺';
+      }
+
+      let toastTimer = null;
+      function showToast(msg) {
+        const toast = document.getElementById('toastNotification');
+        const textEl = document.getElementById('toastMessage');
+        textEl.textContent = msg;
+        toast.classList.remove('hidden');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          toast.classList.add('hidden');
+        }, 3200);
+      }
+
+      function getActiveParcel() {
+        return parcels.find((p) => p.id === activeParcelId) || parcels[0];
+      }
+
+      // GeoJSON poligonundan koyu zeminli SVG önizleme üretir
+      function buildPolygonSvg(geojson, strokeColor) {
+        const stroke = strokeColor || '#22C55E';
+        if (!geojson || !geojson.geometry || !geojson.geometry.coordinates) {
+          return '<svg viewBox="0 0 60 60" class="w-full h-full"><rect x="14" y="14" width="32" height="32" fill="rgba(34,197,94,0.25)" stroke="#22C55E" stroke-width="2.5"/></svg>';
+        }
+        const ring = geojson.geometry.coordinates[0];
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        ring.forEach((pt) => {
+          if (pt[0] < minX) minX = pt[0];
+          if (pt[0] > maxX) maxX = pt[0];
+          if (pt[1] < minY) minY = pt[1];
+          if (pt[1] > maxY) maxY = pt[1];
+        });
+        const spanX = Math.max(maxX - minX, 0.0001);
+        const spanY = Math.max(maxY - minY, 0.0001);
+        const pointsStr = ring
+          .map((pt) => {
+            const nx = 10 + ((pt[0] - minX) / spanX) * 40;
+            const ny = 50 - ((pt[1] - minY) / spanY) * 40;
+            return nx.toFixed(1) + ',' + ny.toFixed(1);
+          })
+          .join(' ');
+
+        return `<svg viewBox="0 0 60 60" class="w-full h-full">
+          <polygon points="${pointsStr}" fill="rgba(34, 197, 94, 0.28)" stroke="${stroke}" stroke-width="2.5" stroke-linejoin="round" />
+        </svg>`;
+      }
+
+      // -----------------------------------------------------------------------
+      // 4. NAVİGASYON VE MOBİL MENÜ KONTROLÜ
+      // -----------------------------------------------------------------------
+      const sidebar = document.getElementById('appSidebar');
+      const backdrop = document.getElementById('sidebarBackdrop');
+
+      function openMobileSidebar() {
+        sidebar.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+      }
+
+      function closeMobileSidebar() {
+        sidebar.classList.add('-translate-x-full');
+        backdrop.classList.add('hidden');
+      }
+
+      document.getElementById('mobileMenuBtn').addEventListener('click', openMobileSidebar);
+      document.getElementById('closeSidebarBtn').addEventListener('click', closeMobileSidebar);
+      backdrop.addEventListener('click', closeMobileSidebar);
+
+      function setSidebarActive(navKey) {
+        document.querySelectorAll('.sidebar-nav-btn').forEach((btn) => {
+          const isCurrent = btn.getAttribute('data-nav') === navKey;
+          if (isCurrent) {
+            btn.className = 'sidebar-nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80 transition cursor-pointer';
+          } else {
+            btn.className = 'sidebar-nav-btn w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition cursor-pointer';
+          }
+        });
+      }
+
+      function switchMainView(viewName) {
+        if (isEditingPolygon && vertexEditHandler) {
+          vertexEditHandler.disable();
+          isEditingPolygon = false;
+          document.getElementById('toggleVertexEditLabel').textContent = 'Sınırı Düzenle';
+        }
+
+        document.getElementById('viewParcels').classList.add('hidden');
+        document.getElementById('viewParcelDetail').classList.add('hidden');
+        document.getElementById('viewGlobalCosts').classList.add('hidden');
+        document.getElementById('viewWeather').classList.add('hidden');
+
+        if (viewName === 'parsellerim') {
+          setSidebarActive('parsellerim');
+          document.getElementById('viewParcels').classList.remove('hidden');
+          renderParcelInventory();
+        } else if (viewName === 'detay') {
+          setSidebarActive('parsellerim');
+          document.getElementById('viewParcelDetail').classList.remove('hidden');
+        } else if (viewName === 'maliyet-tablosu') {
+          setSidebarActive('maliyet-tablosu');
+          document.getElementById('viewGlobalCosts').classList.remove('hidden');
+          populateParcelDropdowns();
+          renderGlobalCostsView();
+        } else if (viewName === 'hava-durumu') {
+          setSidebarActive('hava-durumu');
+          document.getElementById('viewWeather').classList.remove('hidden');
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      document.querySelectorAll('.sidebar-nav-btn').forEach((btn) => {
+        btn.addEventListener('click', function () {
+          closeMobileSidebar();
+          switchMainView(this.getAttribute('data-nav'));
+        });
+      });
+
+      // -----------------------------------------------------------------------
+      // 5. PARSELLERİM (ENVANTER) RENDER & ARAMA / FİLTRELEME
+      // -----------------------------------------------------------------------
+      function renderParcelInventory() {
+        const searchTerm = document.getElementById('parcelSearchInput').value.trim().toLowerCase();
+        const cropFilter = document.getElementById('parcelCropFilter').value;
+
+        // KPI Kartları Güncellemesi
+        const totalCount = parcels.length;
+        const totalDecare = parcels.reduce((acc, p) => acc + Number(p.areaDecare), 0);
+        const totalHectare = totalDecare / 10;
+
+        document.getElementById('sidebarParcelBadge').textContent = totalCount;
+        document.getElementById('kpiTotalParcels').textContent = totalCount + ' Parsel';
+        document.getElementById('kpiActiveSub').textContent = totalCount + ' aktif • 0 bekleyen';
+        document.getElementById('kpiTotalArea').textContent = fmtNum(totalDecare, 1) + ' da';
+        document.getElementById('kpiTotalHectare').textContent = fmtNum(totalHectare, 2) + ' ha toplam';
+        document.getElementById('kpiVerifiedCount').textContent = totalCount + ' / ' + totalCount;
+
+        const filtered = parcels.filter((p) => {
+          const matchesText =
+            p.name.toLowerCase().includes(searchTerm) ||
+            p.location.toLowerCase().includes(searchTerm) ||
+            p.crop.toLowerCase().includes(searchTerm);
+          const matchesCrop = cropFilter === 'ALL' || p.crop === cropFilter;
+          return matchesText && matchesCrop;
+        });
+
+        const grid = document.getElementById('parcelCardsGrid');
+        if (filtered.length === 0) {
+          grid.innerHTML = `<div class="col-span-full bg-white border border-slate-200 rounded-2xl p-8 text-center text-xs sm:text-sm text-slate-500">
+            Arama veya filtre kriterine uygun parsel bulunamadı.
+          </div>`;
+          return;
+        }
+
+        grid.innerHTML = filtered
+          .map((p) => {
+            const latestPass = p.passes[0] || { ndvi: 0.2, date: '16.11.2026' };
+            return `
+              <article data-open-parcel="${p.id}" class="parcel-card-item bg-white border border-slate-200 hover:border-emerald-500 rounded-2xl p-4 shadow-xs hover:shadow-md transition cursor-pointer flex flex-col justify-between space-y-4">
+                <div class="space-y-3">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0">
+                      <div class="w-12 h-12 rounded-xl bg-slate-900 p-1.5 shrink-0 border border-slate-800">
+                        ${buildPolygonSvg(p.polygon, '#22C55E')}
+                      </div>
+                      <div class="min-w-0">
+                        <h3 class="text-sm font-bold text-slate-900 truncate">${p.name}</h3>
+                        <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                          <span class="text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full">
+                            • Aktif Üretim
+                          </span>
+                          <span class="text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded-full">
+                            Uydu Hazır
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <span class="text-slate-400 text-sm font-bold">›</span>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2.5 bg-slate-50 border border-slate-200/70 rounded-xl p-2.5">
+                    <div>
+                      <div class="text-[9px] font-bold tracking-wider text-slate-400 uppercase">ÜRETİM ALANI</div>
+                      <div class="text-xs font-extrabold text-slate-900 mt-0.5">${fmtNum(p.areaDecare, 1)} da</div>
+                      <div class="text-[10px] text-slate-500">${fmtNum(p.areaDecare / 10, 2)} ha</div>
+                    </div>
+                    <div>
+                      <div class="text-[9px] font-bold tracking-wider text-slate-400 uppercase">EKİLİ ÜRÜN</div>
+                      <div class="text-xs font-extrabold text-slate-900 mt-0.5">🌱 ${p.crop}</div>
+                      <div class="text-[10px] text-emerald-700 font-semibold">NDVI: ${latestPass.ndvi.toFixed(2)}</div>
+                    </div>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-600">
+                    <span class="bg-slate-100 px-2 py-0.5 rounded-md font-medium">📍 ${p.location}</span>
+                    <span class="bg-slate-100 px-2 py-0.5 rounded-md font-medium">${p.soilType}</span>
+                    <span class="bg-slate-100 px-2 py-0.5 rounded-md font-medium">${p.irrigation}</span>
+                  </div>
+                </div>
+
+                <div class="pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                  <span class="text-slate-500">Ekim: ${p.sowingDate}</span>
+                  <span class="font-bold text-emerald-700">Detayı aç →</span>
+                </div>
+              </article>
+            `;
+          })
+          .join('');
+      }
+
+      document.getElementById('parcelSearchInput').addEventListener('input', renderParcelInventory);
+      document.getElementById('parcelCropFilter').addEventListener('change', renderParcelInventory);
+
+      // Kart tıklamasıyla parsel detayına geçiş (event delegation)
+      document.getElementById('parcelCardsGrid').addEventListener('click', function (e) {
+        const card = e.target.closest('[data-open-parcel]');
+        if (card) {
+          openParcelDetailView(card.getAttribute('data-open-parcel'));
+        }
+      });
+
+      // -----------------------------------------------------------------------
+      // 6. YENİ PARSEL EKLEME MODALI + UYDU HARİTASI + OTOMATİK DEKAR
+      // -----------------------------------------------------------------------
+      const newParcelModal = document.getElementById('newParcelModal');
+
+      function openNewParcelModal() {
+        pendingDrawnGeoJson = null;
+        document.getElementById('newParcelForm').reset();
+        document.getElementById('npLocation').value = 'Karaevli';
+        document.getElementById('npSowingDate').value = '18.11.2026';
+        document.getElementById('drawStatusBadge').textContent = 'Sınır bekleniyor';
+        document.getElementById('drawStatusBadge').className = 'font-bold text-amber-300';
+        newParcelModal.classList.remove('hidden');
+
+        setTimeout(() => {
+          initNewParcelDrawMap();
+        }, 80);
+      }
+
+      function closeNewParcelModal() {
+        newParcelModal.classList.add('hidden');
+      }
+
+      document.getElementById('openNewParcelModalBtn').addEventListener('click', openNewParcelModal);
+      document.getElementById('closeNewParcelModalBtn').addEventListener('click', closeNewParcelModal);
+      document.getElementById('cancelNewParcelBtn').addEventListener('click', closeNewParcelModal);
+
+      function initNewParcelDrawMap() {
+        if (!drawMap) {
+          drawMap = L.map('newParcelDrawMap', {
+            center: [41.0665, 27.6845],
+            zoom: 15
+          });
+
+          const esriSat = L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            { attribution: 'Esri World Imagery', maxZoom: 19 }
+          );
+          const esriLabels = L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+            { maxZoom: 19 }
+          );
+          const satGroup = L.layerGroup([esriSat, esriLabels]).addTo(drawMap);
+
+          const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: 'OpenStreetMap',
+            maxZoom: 19
+          });
+
+          L.control.layers({ 'Uydu Görünümü': satGroup, 'Sokak Haritası': osmLayer }, null, { position: 'topleft' }).addTo(drawMap);
+
+          drawItemsGroup = new L.FeatureGroup().addTo(drawMap);
+
+          // Türkçe Çizim Araçları Etiketleri
+          L.drawLocal.draw.toolbar.buttons.polygon = 'Tarla sınırı çiz';
+          L.drawLocal.draw.toolbar.actions.text = 'İptal';
+          L.drawLocal.draw.toolbar.finish.text = 'Tamamla';
+          L.drawLocal.draw.toolbar.undo.text = 'Geri al';
+          L.drawLocal.draw.handlers.polygon.tooltip.start = 'Tarla köşesini işaretlemek için tıklayın.';
+          L.drawLocal.draw.handlers.polygon.tooltip.cont = 'Diğer köşeleri işaretlemeye devam edin.';
+          L.drawLocal.draw.handlers.polygon.tooltip.end = 'Alanı kapatmak için ilk noktaya tıklayın.';
+
+          const drawControl = new L.Control.Draw({
+            position: 'topright',
+            draw: {
+              polygon: {
+                allowIntersection: false,
+                showArea: true,
+                shapeOptions: {
+                  color: '#22C55E',
+                  weight: 3,
+                  fillColor: '#22C55E',
+                  fillOpacity: 0.28
+                }
+              },
+              polyline: false,
+              rectangle: false,
+              circle: false,
+              marker: false,
+              circlemarker: false
+            },
+            edit: {
+              featureGroup: drawItemsGroup,
+              remove: true
+            }
+          });
+          drawMap.addControl(drawControl);
+
+          function syncDrawnLayer(layer) {
+            const geojson = layer.toGeoJSON();
+            const sqMeters = turf.area(geojson);
+            const decares = Number((sqMeters / 1000).toFixed(1));
+            pendingDrawnGeoJson = geojson;
+            document.getElementById('npArea').value = decares;
+            document.getElementById('drawStatusBadge').textContent = '✓ Sınır Çizildi (' + fmtNum(decares, 1) + ' da)';
+            document.getElementById('drawStatusBadge').className = 'font-bold text-emerald-400';
+          }
+
+          drawMap.on(L.Draw.Event.CREATED, function (e) {
+            drawItemsGroup.clearLayers();
+            drawItemsGroup.addLayer(e.layer);
+            syncDrawnLayer(e.layer);
+            showToast('Tarla sınırı çizildi ve dekar hesabı otomatik yapıldı.');
+          });
+
+          drawMap.on(L.Draw.Event.EDITED, function (e) {
+            e.layers.eachLayer(function (layer) {
+              syncDrawnLayer(layer);
+            });
+          });
+
+          drawMap.on(L.Draw.Event.DELETED, function () {
+            pendingDrawnGeoJson = null;
+            document.getElementById('npArea').value = '';
+            document.getElementById('drawStatusBadge').textContent = 'Sınır bekleniyor';
+            document.getElementById('drawStatusBadge').className = 'font-bold text-amber-300';
+          });
+        } else {
+          drawItemsGroup.clearLayers();
+          drawMap.setView([41.0665, 27.6845], 15);
+          drawMap.invalidateSize();
+        }
+      }
+
+      // Mahalle / Köy Arama (Nominatim API + Yerel Trakya Yedek Sözlüğü)
+      const LOCAL_VILLAGE_COORDS = {
+        'karaevli': [41.0642, 27.6844],
+        'çorlu': [41.1592, 27.8000],
+        'corlu': [41.1592, 27.8000],
+        'tekirdağ': [40.9781, 27.5117],
+        'tekirdag': [40.9781, 27.5117],
+        'muratlı': [41.1731, 27.4958],
+        'muratli': [41.1731, 27.4958],
+        'seymen': [41.0921, 27.7415],
+        'hayrabolu': [41.2136, 27.1061],
+        'malkara': [40.8900, 26.9011]
+      };
+
+      document.getElementById('modalSearchLocationForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const query = document.getElementById('modalLocationSearchInput').value.trim();
+        if (!query || !drawMap) return;
+
+        const btn = document.getElementById('modalLocationSearchBtn');
+        btn.textContent = 'Aranıyor...';
+        btn.disabled = true;
+
+        try {
+          const res = await fetch(
+            'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(query) + '&countrycodes=tr&limit=1'
+          );
+          const data = await res.json();
+          if (data && data.length > 0) {
+            const lat = parseFloat(data[0].lat);
+            const lon = parseFloat(data[0].lon);
+            drawMap.flyTo([lat, lon], 15, { duration: 1 });
+            document.getElementById('npLocation').value = query;
+            showToast('Harita "' + query + '" konumuna odaklandı.');
+          } else {
+            throw new Error('Bulunamadı');
+          }
+        } catch (err) {
+          const fallback = LOCAL_VILLAGE_COORDS[query.toLowerCase()];
+          if (fallback) {
+            drawMap.flyTo(fallback, 15, { duration: 1 });
+            document.getElementById('npLocation').value = query;
+            showToast('Harita "' + query + '" bölgesine odaklandı.');
+          } else {
+            showToast('Belirtilen mahalle bulunamadı, farklı bir isim deneyin.');
+          }
+        } finally {
+          btn.textContent = 'Konuma Git';
+          btn.disabled = false;
+        }
+      });
+
+      // Konumuma Git (GPS)
+      document.getElementById('modalGpsBtn').addEventListener('click', function () {
+        if (!navigator.geolocation) {
+          showToast('Tarayıcınız konum özelliğini desteklemiyor.');
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          function (pos) {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            if (drawMap) {
+              drawMap.flyTo([lat, lng], 16, { duration: 1 });
+              L.circleMarker([lat, lng], {
+                radius: 7,
+                color: '#15803D',
+                fillColor: '#22C55E',
+                fillOpacity: 0.9
+              }).addTo(drawMap).bindPopup('Mevcut Konumunuz').openPopup();
+            }
+            showToast('Mevcut GPS konumunuza gidildi.');
+          },
+          function () {
+            showToast('Konum izni alınamadı; mahalle aramasını kullanabilirsiniz.');
+          },
+          { enableHighAccuracy: true, timeout: 6000 }
+        );
+      });
+
+      // Yeni Parsel Kayıt Formu Gönderimi
+      document.getElementById('newParcelForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const name = document.getElementById('npName').value.trim();
+        const areaDecare = parseFloat(document.getElementById('npArea').value);
+        const crop = document.getElementById('npCrop').value;
+        const location = document.getElementById('npLocation').value.trim() || 'Karaevli';
+        const sowingDate = document.getElementById('npSowingDate').value.trim() || '18.11.2026';
+        const soilType = document.getElementById('npSoil').value;
+        const irrigation = document.getElementById('npIrrigation').value;
+
+        if (!name || isNaN(areaDecare) || areaDecare <= 0) {
+          showToast('Lütfen parsel adını girin ve haritadan sınır çizin.');
+          return;
+        }
+
+        // Kullanıcı çizim yapmadan manuel dekar girdiyse harita merkezine örnek poligon oluştur
+        let finalGeoJson = pendingDrawnGeoJson;
+        if (!finalGeoJson) {
+          const c = drawMap ? drawMap.getCenter() : { lat: 41.0665, lng: 27.6845 };
+          const d = 0.0014;
+          finalGeoJson = {
+            type: 'Feature',
+            geometry: {
+              type: 'Polygon',
+              coordinates: [[
+                [c.lng - d, c.lat + d],
+                [c.lng + d, c.lat + d],
+                [c.lng + d, c.lat - d],
+                [c.lng - d, c.lat - d],
+                [c.lng - d, c.lat + d]
+              ]]
+            }
+          };
+        }
+
+        const centroidCoords = turf.centroid(finalGeoJson).geometry.coordinates;
+        const yieldDefaults = {
+          'Buğday': { y: 500, p: 11.50 },
+          'Kanola': { y: 300, p: 24.00 },
+          'Ayçiçeği': { y: 250, p: 22.50 },
+          'Arpa': { y: 480, p: 9.80 },
+          'Mısır': { y: 1100, p: 9.20 }
+        };
+        const def = yieldDefaults[crop] || { y: 450, p: 12.0 };
+
+        const newParcel = {
+          id: 'p-' + Date.now(),
+          name: name,
+          areaDecare: areaDecare,
+          crop: crop,
+          location: location,
+          sowingDate: sowingDate,
+          soilType: soilType,
+          irrigation: irrigation,
+          expectedYieldKgDa: def.y,
+          salePriceTryKg: def.p,
+          center: [Number(centroidCoords[1].toFixed(6)), Number(centroidCoords[0].toFixed(6))],
+          polygon: finalGeoJson,
+          passes: DEFAULT_PASSES.map((item, idx) => (idx === 0 ? { ...item, ndvi: 0.20 } : { ...item }))
+        };
+
+        parcels.unshift(newParcel);
+        populateParcelDropdowns();
+        closeNewParcelModal();
+        renderParcelInventory();
+        showToast('"' + name + '" parseli başarıyla oluşturuldu.');
+      });
+
+      // -----------------------------------------------------------------------
+      // 7. PARSEL DETAY SAYFASI & SENTINEL-2 UYDU ANALİZİ
+      // -----------------------------------------------------------------------
+      function openParcelDetailView(parcelId) {
+        activeParcelId = parcelId;
+        activeIndexType = 'NDVI';
+        activePassIdx = 0;
+
+        switchMainView('detay');
+        resetSubtabsToAll();
+        renderParcelDetailHeader();
+        renderSatellitePasses();
+        updateSpectralView();
+        renderDetailCostsSection();
+        document.getElementById('aiOutputCard').classList.add('hidden');
+
+        setTimeout(() => {
+          initOrUpdateDetailSatelliteMap();
+        }, 80);
+      }
+
+      document.getElementById('backToParcelsBtn').addEventListener('click', function () {
+        switchMainView('parsellerim');
+      });
+
+      function renderParcelDetailHeader() {
+        const p = getActiveParcel();
+        document.getElementById('detailMiniSvgBox').innerHTML = buildPolygonSvg(p.polygon, '#22C55E');
+        document.getElementById('detailTitle').textContent = p.name;
+        document.getElementById('detailSubtitle').innerHTML = `
+          <span class="font-bold text-slate-700">${fmtNum(p.areaDecare, 1)} da (${fmtNum(p.areaDecare / 10, 2)} ha)</span>
+          <span>•</span>
+          <span>${p.soilType}</span>
+          <span>•</span>
+          <span>${p.irrigation}</span>
+          <span>•</span>
+          <span>Ekim: ${p.sowingDate}</span>
+        `;
+
+        document.getElementById('detailKpiArea').textContent = fmtNum(p.areaDecare, 1) + ' da';
+        document.getElementById('detailKpiSoil').textContent = p.soilType;
+        document.getElementById('detailKpiCrop').textContent = p.crop;
+        document.getElementById('detailKpiSowing').textContent = 'Ekim: ' + p.sowingDate;
+
+        const latestPass = p.passes[activePassIdx] || p.passes[0];
+        document.getElementById('detailKpiNdvi').textContent = latestPass.ndvi.toFixed(2);
+        document.getElementById('detailKpiPassDate').textContent = 'Geçiş: ' + latestPass.date;
+
+        document.getElementById('detailCoordsText').textContent =
+          p.center[0].toFixed(6) + ', ' + p.center[1].toFixed(6) + ' merkez koordinatı • Uydu haritası aşağıda aktiftir';
+        document.getElementById('detailWeatherLoc').textContent =
+          p.location + ' / Tekirdağ • 5 Günlük Tarımsal Tahmin';
+      }
+
+      // Alt Sekmeler (Tüm Görünüm, Bitki Sağlığı, Harita & Sınır, Maliyet Tablosu)
+      function resetSubtabsToAll() {
+        document.querySelectorAll('.detail-subtab-btn').forEach((btn) => {
+          const isAll = btn.getAttribute('data-subtab') === 'all';
+          btn.className = isAll
+            ? 'detail-subtab-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-white whitespace-nowrap cursor-pointer transition'
+            : 'detail-subtab-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 whitespace-nowrap cursor-pointer transition';
+        });
+        document.getElementById('detailBoundaryBlock').classList.remove('hidden');
+        document.getElementById('detailWeatherBlock').classList.remove('hidden');
+        document.getElementById('detailSatelliteBlock').classList.remove('hidden');
+        document.getElementById('detailCostsBlock').classList.remove('hidden');
+        document.getElementById('detailAiBlock').classList.remove('hidden');
+      }
+
+      document.querySelectorAll('.detail-subtab-btn').forEach((btn) => {
+        btn.addEventListener('click', function () {
+          const mode = this.getAttribute('data-subtab');
+          document.querySelectorAll('.detail-subtab-btn').forEach((b) => {
+            b.className =
+              b === this
+                ? 'detail-subtab-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-white whitespace-nowrap cursor-pointer transition'
+                : 'detail-subtab-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 whitespace-nowrap cursor-pointer transition';
+          });
+
+          const bBlock = document.getElementById('detailBoundaryBlock');
+          const wBlock = document.getElementById('detailWeatherBlock');
+          const sBlock = document.getElementById('detailSatelliteBlock');
+          const cBlock = document.getElementById('detailCostsBlock');
+          const aBlock = document.getElementById('detailAiBlock');
+
+          if (mode === 'all') {
+            bBlock.classList.remove('hidden');
+            wBlock.classList.remove('hidden');
+            sBlock.classList.remove('hidden');
+            cBlock.classList.remove('hidden');
+            aBlock.classList.remove('hidden');
+          } else if (mode === 'health') {
+            bBlock.classList.add('hidden');
+            wBlock.classList.add('hidden');
+            sBlock.classList.remove('hidden');
+            cBlock.classList.add('hidden');
+            aBlock.classList.remove('hidden');
+          } else if (mode === 'boundary') {
+            bBlock.classList.remove('hidden');
+            wBlock.classList.add('hidden');
+            sBlock.classList.remove('hidden');
+            cBlock.classList.add('hidden');
+            aBlock.classList.add('hidden');
+          } else if (mode === 'costs') {
+            bBlock.classList.add('hidden');
+            wBlock.classList.add('hidden');
+            sBlock.classList.add('hidden');
+            cBlock.classList.remove('hidden');
+            aBlock.classList.add('hidden');
+          }
+
+          if (!sBlock.classList.contains('hidden') && detailMap) {
+            setTimeout(() => detailMap.invalidateSize(), 60);
+          }
+        });
+      });
+
+      // Spektral İndeks Hesaplama & Renk Üretimi
+      function getSpectralMetrics(baseNdvi, indexType) {
+        let score = baseNdvi;
+        let title = 'Bitki Canlılığı (NDVI)';
+        let shortLabel = 'Canlılık';
+
+        if (indexType === 'NDWI') {
+          score = Number((baseNdvi * 0.85 - 0.08).toFixed(2));
+          title = 'Su Stresi İndeksi (NDWI)';
+          shortLabel = 'Su Stresi';
+        } else if (indexType === 'NDRE') {
+          score = Number((baseNdvi * 0.78).toFixed(2));
+          title = 'Klorofil & Azot Durumu (NDRE)';
+          shortLabel = 'Azot';
+        } else if (indexType === 'SAVI') {
+          score = Number((baseNdvi * 1.15).toFixed(2));
+          title = 'Toprak Düzeltmeli Erken Çıkış (SAVI)';
+          shortLabel = 'Erken Çıkış';
+        } else if (indexType === 'BSI') {
+          score = Number((0.42 - baseNdvi * 0.65).toFixed(2));
+          title = 'Çıplak Toprak İndeksi (BSI)';
+          shortLabel = 'Çıplak Toprak';
+        }
+
+        // Durum rozeti, renk ve alan dağılımı
+        let statusText = 'Düşük Biyokütle / Nadas';
+        let statusPillClass = 'bg-rose-50 text-rose-700 border border-rose-200';
+        let strokeHex = '#EF4444';
+        let fillHex = '#EF4444';
+        let pctHigh = 0, pctMid = 5, pctLow = 95;
+
+        if (indexType === 'BSI') {
+          statusText = score > 0.25 ? 'Yüksek Toprak Görünürlüğü' : 'Bitki Örtüsü Hakim';
+          statusPillClass = 'bg-amber-50 text-amber-800 border border-amber-200';
+          strokeHex = '#D97706';
+          fillHex = '#F59E0B';
+          pctHigh = 10;
+          pctMid = 35;
+          pctLow = 55;
+        } else if (score >= 0.45) {
+          statusText = 'Gür Gelişim / Sağlıklı';
+          statusPillClass = 'bg-emerald-50 text-emerald-800 border border-emerald-200';
+          strokeHex = '#15803D';
+          fillHex = '#22C55E';
+          pctHigh = 72;
+          pctMid = 22;
+          pctLow = 6;
+        } else if (score >= 0.25) {
+          statusText = 'Orta Gelişim / Kardeşlenme';
+          statusPillClass = 'bg-amber-50 text-amber-800 border border-amber-200';
+          strokeHex = '#D97706';
+          fillHex = '#F59E0B';
+          pctHigh = 24;
+          pctMid = 58;
+          pctLow = 18;
+        }
+
+        return {
+          score,
+          title,
+          shortLabel,
+          statusText,
+          statusPillClass,
+          strokeHex,
+          fillHex,
+          pctHigh,
+          pctMid,
+          pctLow
+        };
+      }
+
+      function updateSpectralView() {
+        const p = getActiveParcel();
+        const pass = p.passes[activePassIdx] || p.passes[0];
+        const m = getSpectralMetrics(pass.ndvi, activeIndexType);
+
+        document.getElementById('satelliteCardTitle').textContent = m.title;
+        document.getElementById('satelliteCardSub').textContent =
+          p.name + ' • ' + p.crop + ' • Sentinel-2 (10m)';
+        document.getElementById('mapBadgeIndexName').textContent = m.shortLabel;
+
+        // Dairesel Gauge
+        const circumference = 163.36;
+        const normalizedRatio = Math.max(0.05, Math.min(1, (m.score + 0.1) / 1.0));
+        const dashOffset = circumference * (1 - normalizedRatio);
+        const circle = document.getElementById('ndviGaugeCircle');
+        circle.setAttribute('stroke', m.strokeHex);
+        circle.setAttribute('stroke-dashoffset', dashOffset.toFixed(1));
+
+        document.getElementById('ndviGaugeText').textContent = m.score.toFixed(2);
+        document.getElementById('ndviGaugeCode').textContent = activeIndexType;
+        document.getElementById('ndviSummaryLabel').textContent = 'PARSEL ORTALAMA ' + activeIndexType;
+        document.getElementById('ndviBigScore').textContent = m.score.toFixed(2);
+        document.getElementById('ndviPassMeta').textContent =
+          'Geçiş: ' + pass.date + ' • Parsel içi Bulut: %' + pass.cloud;
+
+        const statusPill = document.getElementById('ndviStatusPill');
+        statusPill.textContent = m.statusText;
+        statusPill.className = 'inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ' + m.statusPillClass;
+
+        const prevPass = p.passes[activePassIdx + 1];
+        if (prevPass) {
+          const prevMetrics = getSpectralMetrics(prevPass.ndvi, activeIndexType);
+          const diff = Number((m.score - prevMetrics.score).toFixed(2));
+          document.getElementById('ndviDeltaText').textContent =
+            (diff >= 0 ? '+' : '') + diff.toFixed(2) + ' (' + prevPass.date + ' geçişine göre)';
+        } else {
+          document.getElementById('ndviDeltaText').textContent = 'En eski uydu kaydı';
+        }
+
+        // Piksel sayısı ve skala çubuğu
+        const pixelCount = Math.round(p.areaDecare * 10);
+        document.getElementById('pixelCountSubtitle').textContent =
+          pixelCount + ' piksel • 10m × 10m Sentinel-2 gerçek piksel analizi';
+
+        const pointerPct = Math.max(6, Math.min(94, Math.round(((m.score + 0.1) / 1.0) * 100)));
+        const pointer = document.getElementById('scalePointer');
+        pointer.style.left = pointerPct + '%';
+        pointer.textContent = m.score.toFixed(2);
+
+        // Alanın Dağılımı
+        document.getElementById('distBarHigh').style.width = m.pctHigh + '%';
+        document.getElementById('distBarMid').style.width = m.pctMid + '%';
+        document.getElementById('distBarLow').style.width = m.pctLow + '%';
+
+        document.getElementById('distPctHigh').textContent = '%' + m.pctHigh;
+        document.getElementById('distPctMid').textContent = '%' + m.pctMid;
+        document.getElementById('distPctLow').textContent = '%' + m.pctLow;
+
+        document.getElementById('distAreaHigh').textContent = fmtNum((p.areaDecare * m.pctHigh) / 100, 1) + ' da';
+        document.getElementById('distAreaMid').textContent = fmtNum((p.areaDecare * m.pctMid) / 100, 1) + ' da';
+        document.getElementById('distAreaLow').textContent = fmtNum((p.areaDecare * m.pctLow) / 100, 1) + ' da';
+
+        // Hassas Tarım Önerileri
+        const adviceEl = document.getElementById('agronomyAdviceContainer');
+        if (m.score < 0.25 && activeIndexType !== 'BSI') {
+          adviceEl.innerHTML = `
+            <div class="bg-sky-50/80 border border-sky-200 rounded-xl p-3 text-xs text-sky-900">
+              <div class="font-bold">🌱 Erken dönem — bitki henüz cılız veya yeni çimleniyor</div>
+              <p class="text-[11px] text-sky-800 mt-0.5 leading-relaxed">
+                Parselde genç bitki örtüsü veya yeni ekim olduğu için canlılık skoru düşük çıkabilir. Çıkış durumunu toprak yansımasından arındırarak görmek için <strong>"Erken Çıkış (SAVI)"</strong> sekmesine bakın.
+              </p>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800">
+              <div class="font-bold">✓ Tüm parselde homojen yüzey dağılımı</div>
+              <p class="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                Parselin tamamı eşit çıkış profili gösteriyor; bölgesel değişken oranlı gübreleme yerine standart bakım takvimi uygulanabilir.
+              </p>
+            </div>
+          `;
+        } else {
+          adviceEl.innerHTML = `
+            <div class="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900">
+              <div class="font-bold">🌿 Aktif vejetatif gelişim tespit edildi</div>
+              <p class="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
+                ${p.crop} parseli güçlü klorofil aktivitesi gösteriyor. Yaprak azot dengesini kontrol etmek için <strong>"Azot (NDRE)"</strong> sekmesini inceleyebilirsiniz.
+              </p>
+            </div>
+          `;
+        }
+
+        // Harita poligon rengini güncelle
+        if (detailPolygonLayer) {
+          detailPolygonLayer.setStyle({
+            color: m.fillHex,
+            weight: 3,
+            fillColor: m.fillHex,
+            fillOpacity: 0.34
+          });
+        }
+      }
+
+      document.querySelectorAll('.spectral-tab-btn').forEach((btn) => {
+        btn.addEventListener('click', function () {
+          activeIndexType = this.getAttribute('data-index');
+          document.querySelectorAll('.spectral-tab-btn').forEach((b) => {
+            b.className =
+              b === this
+                ? 'spectral-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-700 text-white whitespace-nowrap cursor-pointer transition'
+                : 'spectral-tab-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200/70 whitespace-nowrap cursor-pointer transition';
+          });
+          updateSpectralView();
+        });
+      });
+
+      function renderSatellitePasses() {
+        const p = getActiveParcel();
+        const container = document.getElementById('satellitePassesGrid');
+        container.innerHTML = p.passes
+          .map((pass, idx) => {
+            const isSelected = idx === activePassIdx;
+            const passLabel = idx === 0 ? 'Son Geçiş' : (p.passes.length - idx) + '. Geçiş';
+            return `
+              <button type="button" data-pass-idx="${idx}" class="pass-card-btn rounded-xl p-2 text-center border transition cursor-pointer ${
+                isSelected
+                  ? 'bg-emerald-50 border-emerald-600 ring-1 ring-emerald-600'
+                  : 'bg-white border-slate-200 hover:border-emerald-400'
+              }">
+                <div class="text-[9px] font-bold ${isSelected ? 'text-emerald-800' : 'text-slate-400'}">${passLabel}</div>
+                <div class="text-[10px] font-semibold text-slate-700 mt-0.5">${pass.date}</div>
+                <div class="text-xs font-extrabold ${pass.ndvi >= 0.4 ? 'text-emerald-700' : 'text-slate-900'} mt-1">${pass.ndvi.toFixed(2)}</div>
+              </button>
+            `;
+          })
+          .join('');
+      }
+
+      document.getElementById('satellitePassesGrid').addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-pass-idx]');
+        if (!btn) return;
+        activePassIdx = parseInt(btn.getAttribute('data-pass-idx'), 10);
+        renderSatellitePasses();
+        renderParcelDetailHeader();
+        updateSpectralView();
+      });
+
+      // Detay Sayfası Uydu Haritası & Sınır Düzenleme
+      function initOrUpdateDetailSatelliteMap() {
+        const p = getActiveParcel();
+        if (!detailMap) {
+          detailMap = L.map('detailSatelliteMap', {
+            center: p.center,
+            zoom: 16
+          });
+
+          L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            { attribution: 'Esri World Imagery', maxZoom: 19 }
+          ).addTo(detailMap);
+
+          L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+            { maxZoom: 19 }
+          ).addTo(detailMap);
+        }
+
+        if (detailPolygonLayer) {
+          detailMap.removeLayer(detailPolygonLayer);
+        }
+
+        const geoLayerGroup = L.geoJSON(p.polygon, {
+          style: {
+            color: '#EF4444',
+            weight: 3,
+            fillColor: '#EF4444',
+            fillOpacity: 0.34
+          }
+        });
+
+        detailPolygonLayer = geoLayerGroup.getLayers()[0];
+        detailPolygonLayer.addTo(detailMap);
+        detailMap.invalidateSize();
+        detailMap.fitBounds(detailPolygonLayer.getBounds(), { padding: [35, 35], maxZoom: 17 });
+        updateSpectralView();
+      }
+
+      document.getElementById('toggleVertexEditBtn').addEventListener('click', function () {
+        if (!detailMap || !detailPolygonLayer) return;
+        const label = document.getElementById('toggleVertexEditLabel');
+
+        if (!isEditingPolygon) {
+          vertexEditHandler = new L.Edit.Poly(detailPolygonLayer);
+          vertexEditHandler.enable();
+          isEditingPolygon = true;
+          label.textContent = 'Sınırı Kaydet ✓';
+          showToast('Haritadaki beyaz köşe noktalarını sürükleyerek sınırı düzenleyebilirsiniz.');
+        } else {
+          vertexEditHandler.disable();
+          isEditingPolygon = false;
+          label.textContent = 'Sınırı Düzenle';
+
+          const p = getActiveParcel();
+          const updatedGeoJson = detailPolygonLayer.toGeoJSON();
+          const newDecare = Number((turf.area(updatedGeoJson) / 1000).toFixed(1));
+          const c = turf.centroid(updatedGeoJson).geometry.coordinates;
+
+          p.polygon = updatedGeoJson;
+          p.areaDecare = newDecare;
+          p.center = [Number(c[1].toFixed(6)), Number(c[0].toFixed(6))];
+
+          renderParcelDetailHeader();
+          updateSpectralView();
+          renderDetailCostsSection();
+          showToast('Parsel sınırı güncellendi. Yeni alan: ' + fmtNum(newDecare, 1) + ' da');
+        }
+      });
+
+      // Parsel Düzenle Modalı
+      const editParcelModal = document.getElementById('editParcelModal');
+      document.getElementById('openEditParcelModalBtn').addEventListener('click', function () {
+        const p = getActiveParcel();
+        document.getElementById('epName').value = p.name;
+        document.getElementById('epCrop').value = p.crop;
+        document.getElementById('epLocation').value = p.location;
+        document.getElementById('epSoil').value = p.soilType;
+        document.getElementById('epIrrigation').value = p.irrigation;
+        document.getElementById('epSowingDate').value = p.sowingDate;
+        editParcelModal.classList.remove('hidden');
+      });
+
+      document.getElementById('closeEditParcelModalBtn').addEventListener('click', () => editParcelModal.classList.add('hidden'));
+      document.getElementById('cancelEditParcelBtn').addEventListener('click', () => editParcelModal.classList.add('hidden'));
+
+      document.getElementById('editParcelForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const p = getActiveParcel();
+        p.name = document.getElementById('epName').value.trim();
+        p.crop = document.getElementById('epCrop').value;
+        p.location = document.getElementById('epLocation').value.trim();
+        p.soilType = document.getElementById('epSoil').value.trim();
+        p.irrigation = document.getElementById('epIrrigation').value;
+        p.sowingDate = document.getElementById('epSowingDate').value.trim();
+
+        editParcelModal.classList.add('hidden');
+        renderParcelDetailHeader();
+        updateSpectralView();
+        renderDetailCostsSection();
+        showToast('Parsel bilgileri güncellendi.');
+      });
+
+      // -----------------------------------------------------------------------
+      // 8. ZİRAAT AI ASİSTANI (PARSEL ÖZEL DANIŞMANLIK)
+      // -----------------------------------------------------------------------
+      function generateAgronomyAdvice(topicKey, customText) {
+        const p = getActiveParcel();
+        const pass = p.passes[activePassIdx] || p.passes[0];
+        const parcelExps = expenses.filter((e) => e.parcelId === p.id);
+        const totalCost = parcelExps.reduce((sum, e) => sum + e.perDecare * p.areaDecare, 0);
+        const costPerDa = p.areaDecare > 0 ? totalCost / p.areaDecare : 0;
+        const breakEvenKg = p.salePriceTryKg > 0 ? Math.round(costPerDa / p.salePriceTryKg) : 0;
+
+        const outCard = document.getElementById('aiOutputCard');
+        const outTitle = document.getElementById('aiOutputTitle');
+        const outBody = document.getElementById('aiOutputBody');
+
+        if (topicKey === 'ndvi') {
+          outTitle.textContent = p.name + ' • Sentinel-2 Canlılık Değerlendirmesi';
+          outBody.innerHTML = `
+            <p><strong>${p.name} (${fmtNum(p.areaDecare, 1)} da • ${p.crop}):</strong> ${pass.date} tarihli Sentinel-2 geçişinde ortalama NDVI skoru <strong>${pass.ndvi.toFixed(2)}</strong> olarak ölçüldü.</p>
+            <p>${
+              pass.ndvi < 0.25
+                ? 'Kasım ayı ekim takvimi göz önüne alındığında bu değer erken çimlenme ve kardeşlenme öncesi çıkış dönemini yansıtır. Parsel genelinde homojen bir toprak-bitki dağılımı mevcuttur.'
+                : 'Bitki örtüsü güçlü vejetatif gelişim aşamasındadır. Yaprak alanı indeksi dengeli ilerlemektedir.'
+            }</p>
+          `;
+        } else if (topicKey === 'weather') {
+          outTitle.textContent = p.location + ' Bölgesi • İlaçlama & Bakım Takvimi';
+          outBody.innerHTML = `
+            <p><strong>Hava Durumu Özeti:</strong> Sıcaklık 17°C, rüzgar hızı 15 km/s ve bugün 7.7 mm yağış bekleniyor.</p>
+            <p><strong>Tavsiye:</strong> Yapraktan uygulanacak yabancı ot veya fungisit ilaçlamalarını yağış öncesinde değil, <strong>Yarın (22.11) sabah 07:30 – 11:00</strong> saatleri arasında (0 mm yağış, 11 km/s sakin rüzgar) gerçekleştirmeniz ilaç etkinliğini maksimuma çıkaracaktır.</p>
+          `;
+        } else if (topicKey === 'profit') {
+          outTitle.textContent = p.name + ' • Kârlılık & Başabaş Analizi';
+          outBody.innerHTML = `
+            <p><strong>Maliyet Tablosu Özeti:</strong> Bu parselde toplam <strong>${fmtTry(totalCost)}</strong> (${fmtTry(costPerDa)}/da) üretim gideri kayıtlıdır.</p>
+            <p><strong>Başabaş Noktası:</strong> ${fmtNum(p.salePriceTryKg, 2)} ₺/kg satış fiyatıyla maliyetinizi karşılamanız için gereken minimum verim <strong>${breakEvenKg} kg/da</strong>'dır. Hedeflenen <strong>${p.expectedYieldKgDa} kg/da</strong> verime ulaşıldığında net kâr marjınız pozitif bölgede kalmaktadır.</p>
+          `;
+        } else {
+          outTitle.textContent = p.name + ' • Özel Ziraat AI Yanıtı';
+          outBody.innerHTML = `
+            <p><strong>Soru:</strong> "${customText}"</p>
+            <p><strong>Değerlendirme (${p.crop} • ${p.soilType}):</strong> ${p.location} bölgesindeki ${fmtNum(p.areaDecare, 1)} dekarlık parselinizde mevcut NDVI (${pass.ndvi.toFixed(2)}) ve ${fmtTry(costPerDa)}/da girdi maliyeti dikkate alındığında; toprak neminin uygun olduğu yarınki yağışsız pencerede üst gübreleme ve yabancı ot kontrolü planlanması önerilir.</p>
+          `;
+        }
+
+        outCard.classList.remove('hidden');
+      }
+
+      document.querySelectorAll('.ai-preset-btn').forEach((btn) => {
+        btn.addEventListener('click', function () {
+          generateAgronomyAdvice(this.getAttribute('data-aiprompt'), '');
+        });
+      });
+
+      document.getElementById('aiCustomForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const input = document.getElementById('aiCustomInput');
+        const q = input.value.trim();
+        if (!q) return;
+        generateAgronomyAdvice('custom', q);
+        input.value = '';
+      });
+
+      document.getElementById('closeAiOutputBtn').addEventListener('click', function () {
+        document.getElementById('aiOutputCard').classList.add('hidden');
+      });
+
+      // -----------------------------------------------------------------------
+      // 9. MALİYET TABLOSU MODÜLÜ (DETAY + GENEL GÖRÜNÜM + SİMÜLATÖR + CSV)
+      // -----------------------------------------------------------------------
+      function populateParcelDropdowns() {
+        const globalFilter = document.getElementById('globalCostParcelFilter');
+        const modalSelect = document.getElementById('expParcelSelect');
+        const prevVal = globalFilter.value || 'ALL';
+
+        globalFilter.innerHTML = '<option value="ALL">Tüm Parseller</option>';
+        modalSelect.innerHTML = '';
+
+        parcels.forEach((p) => {
+          const opt1 = document.createElement('option');
+          opt1.value = p.id;
+          opt1.textContent = p.name + ' (' + fmtNum(p.areaDecare, 1) + ' da • ' + p.crop + ')';
+          globalFilter.appendChild(opt1);
+
+          const opt2 = document.createElement('option');
+          opt2.value = p.id;
+          opt2.textContent = p.name + ' (' + fmtNum(p.areaDecare, 1) + ' da)';
+          modalSelect.appendChild(opt2);
+        });
+
+        if ([...globalFilter.options].some((o) => o.value === prevVal)) {
+          globalFilter.value = prevVal;
+        }
+      }
+
+      function renderCostModule(options) {
+        const targetParcelId = options.parcelId;
+        const catFilter = options.categoryFilter;
+        const isAll = targetParcelId === 'ALL';
+
+        const scopeParcels = isAll ? parcels : parcels.filter((p) => p.id === targetParcelId);
+        const totalArea = scopeParcels.reduce((sum, p) => sum + Number(p.areaDecare), 0);
+
+        const scopeExpenses = expenses.filter((e) =>
+          isAll ? parcels.some((p) => p.id === e.parcelId) : e.parcelId === targetParcelId
+        );
+
+        const filteredTableExpenses = scopeExpenses.filter(
+          (e) => catFilter === 'ALL' || e.category === catFilter
+        );
+
+        let totalCostTry = 0;
+        const catTotals = {
+          'Tohum': 0,
+          'Gübre': 0,
+          'İlaç': 0,
+          'Mazot & İşçilik': 0,
+          'Hasat': 0,
+          'Kira/Diğer': 0
+        };
+
+        scopeExpenses.forEach((exp) => {
+          const p = parcels.find((item) => item.id === exp.parcelId);
+          const area = p ? Number(p.areaDecare) : 0;
+          const rowTotal = Number(exp.perDecare) * area;
+          totalCostTry += rowTotal;
+          if (catTotals[exp.category] !== undefined) {
+            catTotals[exp.category] += rowTotal;
+          } else {
+            catTotals['Kira/Diğer'] += rowTotal;
+          }
+        });
+
+        const avgCostPerDa = totalArea > 0 ? totalCostTry / totalArea : 0;
+
+        let totalGrossRevenue = 0;
+        let totalExpectedKg = 0;
+        scopeParcels.forEach((p) => {
+          const area = Number(p.areaDecare);
+          const y = Number(p.expectedYieldKgDa || 450);
+          const price = Number(p.salePriceTryKg || 12);
+          totalExpectedKg += area * y;
+          totalGrossRevenue += area * y * price;
+        });
+
+        const avgYieldKgDa = totalArea > 0 ? totalExpectedKg / totalArea : 0;
+        const avgPriceTryKg = totalExpectedKg > 0 ? totalGrossRevenue / totalExpectedKg : 12;
+        const netProfit = totalGrossRevenue - totalCostTry;
+        const marginPct = totalGrossRevenue > 0 ? (netProfit / totalGrossRevenue) * 100 : 0;
+        const isLoss = netProfit < 0;
+        const breakEvenYield = avgPriceTryKg > 0 ? avgCostPerDa / avgPriceTryKg : 0;
+
+        // 1. KPI Kartları
+        document.getElementById(options.kpiContainerId).innerHTML = `
+          <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+            <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">TOPLAM ÜRETİM MALİYETİ</div>
+            <div class="text-lg sm:text-xl font-extrabold text-slate-900 mt-1.5">${fmtTry(totalCostTry)}</div>
+            <div class="text-xs text-slate-500 mt-1">Ortalama: <strong class="text-slate-700">${fmtTry(avgCostPerDa)}/da</strong></div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+            <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">TAHMİNİ BRÜT GELİR</div>
+            <div class="text-lg sm:text-xl font-extrabold text-slate-900 mt-1.5">${fmtTry(totalGrossRevenue)}</div>
+            <div class="text-xs text-slate-500 mt-1">${Math.round(avgYieldKgDa)} kg/da × ${fmtNum(avgPriceTryKg, 2)} ₺/kg</div>
+          </div>
+
+          <div class="border rounded-2xl p-4 shadow-xs ${isLoss ? 'bg-rose-50/70 border-rose-300' : 'bg-emerald-50/60 border-emerald-200'}">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold tracking-wider uppercase ${isLoss ? 'text-rose-700' : 'text-emerald-800'}">
+                ${isLoss ? 'TAHMİNİ NET ZARAR' : 'TAHMİNİ NET KÂR'}
+              </span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isLoss ? 'bg-rose-600 text-white' : 'bg-emerald-700 text-white'}">
+                %${fmtNum(marginPct, 1)}
+              </span>
+            </div>
+            <div class="text-lg sm:text-xl font-extrabold mt-1.5 ${isLoss ? 'text-rose-700' : 'text-emerald-800'}">${fmtTry(netProfit)}</div>
+            <div class="text-xs mt-1 ${isLoss ? 'text-rose-700 font-medium' : 'text-emerald-700'}">
+              ${isLoss ? 'Maliyet tahmini geliri aşıyor' : 'Pozitif kâr marjı'}
+            </div>
+          </div>
+
+          <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+            <div class="text-[10px] font-bold tracking-wider text-slate-400 uppercase">BAŞABAŞ VERİM NOKTASI</div>
+            <div class="text-lg sm:text-xl font-extrabold text-slate-900 mt-1.5">${Math.round(breakEvenYield)} kg/da</div>
+            <div class="text-xs text-slate-500 mt-1">
+              Hedefe göre: <strong class="${avgYieldKgDa >= breakEvenYield ? 'text-emerald-700' : 'text-rose-600'}">
+                ${avgYieldKgDa >= breakEvenYield ? '+' : ''}${Math.round(avgYieldKgDa - breakEvenYield)} kg/da
+              </strong>
+            </div>
+          </div>
+        `;
+
+        // 2. Canlı Simülatör
+        const simYield = Math.round(avgYieldKgDa);
+        const simPrice = Number(avgPriceTryKg.toFixed(2));
+        document.getElementById(options.simContainerId).innerHTML = `
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div class="text-xs font-bold text-slate-900">⚡ Canlı Verim & Satış Fiyatı Simülatörü</div>
+            <span class="text-[11px] text-slate-500">${isAll ? 'Tüm Parseller (Ortalama Senaryo)' : scopeParcels[0].name + ' (' + fmtNum(totalArea, 1) + ' da)'}</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            <div class="bg-white border border-slate-200 rounded-xl p-3 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-700">Beklenen Verim (kg/da)</span>
+                <span class="text-xs font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg">${simYield} kg/da</span>
+              </div>
+              <input type="range" min="100" max="1500" step="10" value="${Math.min(1500, Math.max(100, simYield))}" data-sim-field="yield" data-sim-parcel="${targetParcelId}" data-sim-global="${options.isGlobal ? '1' : '0'}" class="sim-slider-input w-full cursor-pointer" />
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-xl p-3 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-700">Hedef Satış Fiyatı (₺/kg)</span>
+                <span class="text-xs font-extrabold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-lg">${fmtNum(simPrice, 2)} ₺/kg</span>
+              </div>
+              <input type="range" min="5" max="45" step="0.25" value="${Math.min(45, Math.max(5, simPrice))}" data-sim-field="price" data-sim-parcel="${targetParcelId}" data-sim-global="${options.isGlobal ? '1' : '0'}" class="sim-slider-input w-full cursor-pointer" />
+            </div>
+          </div>
+        `;
+
+        // 3. Kategori Dağılım Çubuğu
+        const activeCats = Object.entries(catTotals).filter(([, val]) => val > 0);
+        const barsHtml =
+          totalCostTry > 0
+            ? activeCats
+                .map(([cat, val]) => {
+                  const pct = (val / totalCostTry) * 100;
+                  const meta = CATEGORY_META[cat] || CATEGORY_META['Kira/Diğer'];
+                  return `<div style="width: ${pct.toFixed(2)}%" class="${meta.color}" title="${cat}: %${pct.toFixed(1)}"></div>`;
+                })
+                .join('')
+            : '<div class="w-full bg-slate-200"></div>';
+
+        const legendHtml = activeCats
+          .sort((a, b) => b[1] - a[1])
+          .map(([cat, val]) => {
+            const pct = totalCostTry > 0 ? (val / totalCostTry) * 100 : 0;
+            const meta = CATEGORY_META[cat] || CATEGORY_META['Kira/Diğer'];
+            return `
+              <div class="flex items-center justify-between bg-slate-50 border border-slate-200/80 rounded-xl px-3 py-2 text-xs">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="w-2.5 h-2.5 rounded-full ${meta.color} shrink-0"></span>
+                  <span class="font-medium text-slate-700 truncate">${cat}</span>
+                </div>
+                <div class="text-right shrink-0 ml-2">
+                  <span class="font-bold text-slate-900">%${fmtNum(pct, 1)}</span>
+                  <span class="text-[11px] text-slate-500 ml-1">(${Math.round(val).toLocaleString('tr-TR')} ₺)</span>
+                </div>
+              </div>
+            `;
+          })
+          .join('');
+
+        document.getElementById(options.breakdownContainerId).innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-900">Kategori Bazlı Gider Dağılımı</span>
+            <span class="text-[11px] text-slate-500">${activeCats.length} aktif kategori</span>
+          </div>
+          <div class="h-3 w-full rounded-full overflow-hidden flex bg-slate-100">${barsHtml}</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
+            ${legendHtml || '<div class="text-xs text-slate-500">Henüz gider kaydı bulunmuyor.</div>'}
+          </div>
+        `;
+
+        // 4. Tablo Satırları
+        const tbody = document.getElementById(options.tableBodyId);
+        const colSpan = options.isGlobal ? 7 : 6;
+
+        if (options.isGlobal) {
+          document.getElementById('globalCostSummaryCount').textContent =
+            filteredTableExpenses.length + ' gider kaydı listeleniyor • Toplam Alan: ' + fmtNum(totalArea, 1) + ' da';
+        }
+
+        if (filteredTableExpenses.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="${colSpan}" class="py-8 px-4 text-center text-xs text-slate-500">Bu filtreye uygun gider kaydı bulunamadı.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = filteredTableExpenses
+          .map((exp) => {
+            const p = parcels.find((item) => item.id === exp.parcelId);
+            const pName = p ? p.name : 'Parsel';
+            const area = p ? Number(p.areaDecare) : 0;
+            const totalRow = Number(exp.perDecare) * area;
+            const meta = CATEGORY_META[exp.category] || CATEGORY_META['Kira/Diğer'];
+
+            return `
+              <tr class="hover:bg-slate-50/90 transition">
+                <td class="py-2.5 px-3.5 text-slate-600 whitespace-nowrap font-medium">${exp.date}</td>
+                ${options.isGlobal ? `<td class="py-2.5 px-3.5 font-bold text-slate-900 whitespace-nowrap">${pName}</td>` : ''}
+                <td class="py-2.5 px-3.5 whitespace-nowrap">
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${meta.badge}">
+                    ${exp.category}
+                  </span>
+                </td>
+                <td class="py-2.5 px-3.5 text-slate-700">${exp.description}</td>
+                <td class="py-2.5 px-3.5 text-right font-semibold text-slate-700 whitespace-nowrap">${fmtTry(exp.perDecare)}/da</td>
+                <td class="py-2.5 px-3.5 text-right font-extrabold text-slate-900 whitespace-nowrap">${fmtTry(totalRow)}</td>
+                <td class="py-2.5 px-3.5 text-right whitespace-nowrap">
+                  <button type="button" data-delete-expense="${exp.id}" class="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-[11px] font-semibold text-rose-700 cursor-pointer transition">
+                    Sil
+                  </button>
+                </td>
+              </tr>
+            `;
+          })
+          .join('');
+      }
+
+      function renderDetailCostsSection() {
+        const p = getActiveParcel();
+        document.getElementById('detailCostSubtitle').textContent =
+          p.name + ' (' + fmtNum(p.areaDecare, 1) + ' da • ' + p.crop + ') — Sezonluk giderler ve başabaş noktası';
+        renderCostModule({
+          parcelId: p.id,
+          categoryFilter: document.getElementById('detailCostCatFilter').value,
+          kpiContainerId: 'detailCostKpis',
+          simContainerId: 'detailCostSimulator',
+          breakdownContainerId: 'detailCostBreakdown',
+          tableBodyId: 'detailCostTableBody',
+          isGlobal: false
+        });
+      }
+
+      function renderGlobalCostsView() {
+        renderCostModule({
+          parcelId: document.getElementById('globalCostParcelFilter').value,
+          categoryFilter: document.getElementById('globalCostCatFilter').value,
+          kpiContainerId: 'globalCostKpis',
+          simContainerId: 'globalCostSimulator',
+          breakdownContainerId: 'globalCostBreakdown',
+          tableBodyId: 'globalCostTableBody',
+          isGlobal: true
+        });
+      }
+
+      document.getElementById('detailCostCatFilter').addEventListener('change', renderDetailCostsSection);
+      document.getElementById('globalCostParcelFilter').addEventListener('change', renderGlobalCostsView);
+      document.getElementById('globalCostCatFilter').addEventListener('change', renderGlobalCostsView);
+
+      // Canlı Simülatör Slider Event Delegation
+      document.addEventListener('input', function (e) {
+        if (!e.target.classList.contains('sim-slider-input')) return;
+        const field = e.target.getAttribute('data-sim-field');
+        const targetParcel = e.target.getAttribute('data-sim-parcel');
+        const isGlobal = e.target.getAttribute('data-sim-global') === '1';
+        const val = parseFloat(e.target.value);
+        if (isNaN(val)) return;
+
+        if (targetParcel === 'ALL') {
+          parcels.forEach((p) => {
+            if (field === 'yield') p.expectedYieldKgDa = val;
+            if (field === 'price') p.salePriceTryKg = val;
+          });
+        } else {
+          const p = parcels.find((item) => item.id === targetParcel);
+          if (p) {
+            if (field === 'yield') p.expectedYieldKgDa = val;
+            if (field === 'price') p.salePriceTryKg = val;
+          }
+        }
+
+        if (isGlobal) {
+          renderGlobalCostsView();
+        } else {
+          renderDetailCostsSection();
+        }
+      });
+
+      // Satır Silme Event Delegation
+      document.addEventListener('click', function (e) {
+        const delBtn = e.target.closest('[data-delete-expense]');
+        if (!delBtn) return;
+        const expId = delBtn.getAttribute('data-delete-expense');
+        expenses = expenses.filter((item) => item.id !== expId);
+        renderDetailCostsSection();
+        renderGlobalCostsView();
+        showToast('Gider satırı tablodan silindi.');
+      });
+
+      // -----------------------------------------------------------------------
+      // 10. YENİ GİDER EKLE MODALI (ÇİFT YÖNLÜ ₺/da <-> ₺ HESAP)
+      // -----------------------------------------------------------------------
+      const expenseModal = document.getElementById('expenseModal');
+
+      function openExpenseModal(preselectParcelId) {
+        populateParcelDropdowns();
+        document.getElementById('expenseForm').reset();
+        document.getElementById('expDateInput').value = '21.11.2026';
+        const sel = document.getElementById('expParcelSelect');
+        if (preselectParcelId && [...sel.options].some((o) => o.value === preselectParcelId)) {
+          sel.value = preselectParcelId;
+        }
+        expenseModal.classList.remove('hidden');
+      }
+
+      document.getElementById('detailAddExpenseBtn').addEventListener('click', () => openExpenseModal(activeParcelId));
+      document.getElementById('globalAddExpenseBtn').addEventListener('click', () => {
+        const filterVal = document.getElementById('globalCostParcelFilter').value;
+        openExpenseModal(filterVal === 'ALL' ? parcels[0].id : filterVal);
+      });
+
+      document.getElementById('closeExpenseModalBtn').addEventListener('click', () => expenseModal.classList.add('hidden'));
+      document.getElementById('cancelExpenseModalBtn').addEventListener('click', () => expenseModal.classList.add('hidden'));
+
+      const expPerDecareInput = document.getElementById('expPerDecareInput');
+      const expTotalInput = document.getElementById('expTotalInput');
+      const expParcelSelect = document.getElementById('expParcelSelect');
+
+      expPerDecareInput.addEventListener('input', function () {
+        const perDa = parseFloat(this.value);
+        const p = parcels.find((item) => item.id === expParcelSelect.value);
+        const area = p ? Number(p.areaDecare) : 0;
+        expTotalInput.value = !isNaN(perDa) && area > 0 ? (perDa * area).toFixed(2) : '';
+      });
+
+      expTotalInput.addEventListener('input', function () {
+        const total = parseFloat(this.value);
+        const p = parcels.find((item) => item.id === expParcelSelect.value);
+        const area = p ? Number(p.areaDecare) : 0;
+        expPerDecareInput.value = !isNaN(total) && area > 0 ? (total / area).toFixed(2) : '';
+      });
+
+      expParcelSelect.addEventListener('change', function () {
+        const perDa = parseFloat(expPerDecareInput.value);
+        const p = parcels.find((item) => item.id === this.value);
+        const area = p ? Number(p.areaDecare) : 0;
+        if (!isNaN(perDa) && area > 0) {
+          expTotalInput.value = (perDa * area).toFixed(2);
+        }
+      });
+
+      document.getElementById('expenseForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const parcelId = expParcelSelect.value;
+        const category = document.getElementById('expCategorySelect').value;
+        const description = document.getElementById('expDescInput').value.trim();
+        const date = document.getElementById('expDateInput').value.trim() || '21.11.2026';
+        const perDecare = parseFloat(expPerDecareInput.value);
+
+        if (!parcelId || !description || isNaN(perDecare) || perDecare < 0) return;
+
+        expenses.unshift({
+          id: 'e-' + Date.now(),
+          parcelId: parcelId,
+          date: date,
+          category: category,
+          description: description,
+          perDecare: perDecare
+        });
+
+        expenseModal.classList.add('hidden');
+        renderDetailCostsSection();
+        renderGlobalCostsView();
+        showToast('Yeni üretim gideri kaydedildi.');
+      });
+
+      // -----------------------------------------------------------------------
+      // 11. EXCEL / CSV DIŞA AKTARIM (UTF-8 BOM DESTEKLİ)
+      // -----------------------------------------------------------------------
+      function downloadCsvReport(parcelIdFilter, catFilter) {
+        const rows = expenses.filter((e) => {
+          const matchP = parcelIdFilter === 'ALL' || e.parcelId === parcelIdFilter;
+          const matchC = catFilter === 'ALL' || e.category === catFilter;
+          return matchP && matchC;
+        });
+
+        const headers = ['Tarih', 'Parsel Adı', 'Ürün', 'Alan (da)', 'Kategori', 'Açıklama', 'Dekar Başı (TL/da)', 'Toplam Tutar (TL)'];
+        const lines = [headers.join(';')];
+        let grandTotal = 0;
+
+        rows.forEach((exp) => {
+          const p = parcels.find((item) => item.id === exp.parcelId);
+          const area = p ? Number(p.areaDecare) : 0;
+          const rowTotal = Number(exp.perDecare) * area;
+          grandTotal += rowTotal;
+
+          lines.push([
+            exp.date,
+            '"' + (p ? p.name : '') + '"',
+            '"' + (p ? p.crop : '') + '"',
+            area.toFixed(1).replace('.', ','),
+            '"' + exp.category + '"',
+            '"' + String(exp.description).replace(/"/g, '""') + '"',
+            Number(exp.perDecare).toFixed(2).replace('.', ','),
+            rowTotal.toFixed(2).replace('.', ',')
+          ].join(';'));
+        });
+
+        lines.push(['', '', '', '', '', '"GENEL TOPLAM"', '', grandTotal.toFixed(2).replace('.', ',')].join(';'));
+
+        const csvContent = '\uFEFF' + lines.join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Ekinvya_Maliyet_Tablosu_2026_2027.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showToast('Maliyet tablosu Excel / CSV formatında indirildi.');
+      }
+
+      document.getElementById('detailExportCsvBtn').addEventListener('click', function () {
+        downloadCsvReport(activeParcelId, document.getElementById('detailCostCatFilter').value);
+      });
+
+      document.getElementById('globalExportCsvBtn').addEventListener('click', function () {
+        downloadCsvReport(
+          document.getElementById('globalCostParcelFilter').value,
+          document.getElementById('globalCostCatFilter').value
+        );
+      });
+
+      // -----------------------------------------------------------------------
+      // 12. İLK YÜKLEME BAŞLATMA
+      // -----------------------------------------------------------------------
+      populateParcelDropdowns();
+      renderParcelInventory();
+    });
+  </script>
 </body>
 </html>
-
-
-
-
-
